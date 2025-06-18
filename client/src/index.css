@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(222, 84%, 4.9%);
+  --muted: hsl(210, 40%, 98%);
+  --muted-foreground: hsl(215.4, 16.3%, 46.9%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(222, 84%, 4.9%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(222, 84%, 4.9%);
+  --border: hsl(214.3, 31.8%, 91.4%);
+  --input: hsl(214.3, 31.8%, 91.4%);
+  --primary: hsl(158, 64%, 52%);
+  --primary-foreground: hsl(210, 40%, 98%);
+  --secondary: hsl(210, 40%, 96%);
+  --secondary-foreground: hsl(222, 47%, 11%);
+  --accent: hsl(210, 40%, 96%);
+  --accent-foreground: hsl(222, 47%, 11%);
+  --destructive: hsl(0, 84%, 60%);
+  --destructive-foreground: hsl(210, 40%, 98%);
+  --ring: hsl(222, 84%, 4.9%);
+  --radius: 0.5rem;
+  --chart-1: hsl(221, 83%, 53%);
+  --chart-2: hsl(158, 64%, 52%);
+  --chart-3: hsl(262, 83%, 58%);
+  --chart-4: hsl(43, 96%, 56%);
+  --chart-5: hsl(27, 87%, 67%);
+  
+  /* Custom investment theme colors */
+  --navy-600: hsl(221, 75%, 26%);
+  --navy-700: hsl(221, 83%, 24%);
+  --navy-800: hsl(221, 83%, 22%);
+  --navy-900: hsl(221, 75%, 20%);
+  --emerald-400: hsl(158, 64%, 62%);
+  --emerald-500: hsl(158, 64%, 52%);
+  --emerald-600: hsl(158, 64%, 42%);
+  --gradient-start: hsl(221, 75%, 26%);
+  --gradient-end: hsl(221, 83%, 53%);
+}
+
+.dark {
+  --background: hsl(222, 84%, 4.9%);
+  --foreground: hsl(210, 40%, 98%);
+  --muted: hsl(217, 32%, 17%);
+  --muted-foreground: hsl(215, 20%, 65%);
+  --popover: hsl(222, 84%, 4.9%);
+  --popover-foreground: hsl(210, 40%, 98%);
+  --card: hsl(222, 84%, 4.9%);
+  --card-foreground: hsl(210, 40%, 98%);
+  --border: hsl(217, 32%, 17%);
+  --input: hsl(217, 32%, 17%);
+  --primary: hsl(158, 64%, 52%);
+  --primary-foreground: hsl(222, 84%, 4.9%);
+  --secondary: hsl(217, 32%, 17%);
+  --secondary-foreground: hsl(210, 40%, 98%);
+  --accent: hsl(217, 32%, 17%);
+  --accent-foreground: hsl(210, 40%, 98%);
+  --destructive: hsl(0, 62%, 30%);
+  --destructive-foreground: hsl(210, 40%, 98%);
+  --ring: hsl(212, 12%, 70%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer components {
+  .gradient-bg {
+    background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+  }
+  
+  .card-hover {
+    @apply transition-all duration-300;
+  }
+  
+  .card-hover:hover {
+    @apply -translate-y-1 shadow-lg;
+  }
+  
+  .page-transition {
+    @apply transition-all duration-300 ease-in-out;
+  }
+  
+  .page-hidden {
+    @apply opacity-0 translate-y-5 pointer-events-none;
+  }
+}
+
+@layer utilities {
+  .text-navy-600 {
+    color: var(--navy-600);
+  }
+  
+  .text-navy-700 {
+    color: var(--navy-700);
+  }
+  
+  .bg-navy-600 {
+    background-color: var(--navy-600);
+  }
+  
+  .bg-navy-700 {
+    background-color: var(--navy-700);
+  }
+  
+  .bg-navy-800 {
+    background-color: var(--navy-800);
+  }
+  
+  .bg-navy-900 {
+    background-color: var(--navy-900);
+  }
+  
+  .text-emerald-400 {
+    color: var(--emerald-400);
+  }
+  
+  .text-emerald-500 {
+    color: var(--emerald-500);
+  }
+  
+  .text-emerald-600 {
+    color: var(--emerald-600);
+  }
+  
+  .bg-emerald-500 {
+    background-color: var(--emerald-500);
+  }
+  
+  .bg-emerald-600 {
+    background-color: var(--emerald-600);
+  }
+  
+  .hover\:bg-emerald-600:hover {
+    background-color: var(--emerald-600);
+  }
+}
