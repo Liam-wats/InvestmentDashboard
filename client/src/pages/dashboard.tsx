@@ -348,7 +348,7 @@ export default function Dashboard() {
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
                             {activity.shares && `${activity.shares} shares • `}
-                            {formatTimeAgo(activity.createdAt)}
+                            {formatTimeAgo(activity.createdAt || new Date())}
                           </p>
                         </div>
                       </div>
