@@ -9,7 +9,6 @@ import {
   Menu, 
   X,
   PieChart,
-  Activity,
   Settings,
   Home
 } from "lucide-react";
@@ -64,7 +63,7 @@ export default function Dashboard() {
 
   const initializeChart = () => {
     const canvas = document.getElementById('portfolioChart') as HTMLCanvasElement;
-    if (!canvas || !window.Chart) return;
+    if (!canvas || !(window as any).Chart) return;
 
     // Destroy existing chart
     if (chartInstance) {

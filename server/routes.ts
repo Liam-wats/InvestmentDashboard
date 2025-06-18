@@ -12,28 +12,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // For demo purposes, accept any valid email/password combination
       // In production, you would verify credentials against database
-      const user = await storage.getUserByUsername(email);
+      const user = await storage.getUserByEmail(email);
       
       if (!user) {
         // Create new user for demo
         const newUser = await storage.createUser({
-          username: email,
+          email: email,
           password: password, // In production, hash the password
+          name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
         });
         
         res.json({
           user: {
             id: newUser.id,
-            email: newUser.username,
-            name: newUser.username.split('@')[0],
+            email: newUser.email,
+            name: newUser.name,
           }
         });
       } else {
         res.json({
           user: {
             id: user.id,
-            email: user.username,
-            name: user.username.split('@')[0],
+            email: user.email,
+            name: user.name,
           }
         });
       }
