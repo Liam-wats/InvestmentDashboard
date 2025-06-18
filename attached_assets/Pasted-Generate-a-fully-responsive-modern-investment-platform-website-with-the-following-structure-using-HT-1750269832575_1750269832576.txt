@@ -1,0 +1,36 @@
+Generate a fully responsive modern investment platform website with the following structure using HTML, CSS, and JavaScript (or React if needed). The website should be professional, clean, and optimized for both desktop and mobile.
+
+	1. Landing Page (index.html):
+		•	Full-screen hero section with a strong headline: “Grow Your Wealth with Smart Investments.”
+	•	CTA button: “Get Started” that redirects to the login page.
+	•	Sections for:
+	•	Key benefits/features (use icons and short descriptions).
+	•	Testimonials (3 cards with investor quotes).
+	•	Security assurances (trust badges or short blurbs).
+	•	Responsive navigation bar with logo, “Login”, and “Create Account” links.
+	•	Use a professional color scheme (e.g., dark navy blue, white, and emerald green as the accent color).
+
+	2. Login Page (login.html or /login route):
+		•	Clean, centered login form with:
+	•	Email and password fields.
+	•	“Forgot Password?” and “Create Account” links below the form.
+	•	Submit button with loading animation.
+	•	Styled with subtle shadows and smooth transitions.
+	•	Background can be a gradient or a blurred abstract image to maintain professionalism.
+
+	3. Dashboard Page (dashboard.html or /dashboard route):
+		•	After login, users are taken to a personalized dashboard that shows:
+	•	Welcome message with the user’s name.
+	•	Investment summary card: Total invested, current value, and ROI.
+	•	Pie or bar chart of investment allocation (use Chart.js or similar).
+	•	Recent activity (list of last 5 investments).
+	•	Prominent “Buy More Shares” or “Invest More” button.
+	•	Mobile-responsive layout with collapsible sidebar navigation.
+	•	Design should mimic modern fintech dashboards (e.g., Robinhood or Wealthfront).
+
+	Bonus (if possible):
+		•	Use localStorage to simulate login and investment data.
+	•	Add light/dark mode toggle.
+	•	Add animated transitions between pages or components.
+
+	Structure the files cleanly with separate folders for CSS, JS, and assets. Prioritize clean UI, accessibility, and responsive design.
