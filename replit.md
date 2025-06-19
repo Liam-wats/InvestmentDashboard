@@ -25,23 +25,26 @@ The application follows a full-stack architecture with clear separation between 
 - **Charts**: Integration with Chart.js for portfolio visualization
 
 ### Backend Architecture
-- **RESTful API**: Express.js routes for authentication and investment data
-- **Authentication**: Simplified demo authentication system (suitable for development/demo)
-- **Data Storage**: In-memory storage with interface for easy database migration
+- **RESTful API**: Express.js routes for authentication, user management, and funding transactions
+- **Authentication**: Simplified demo authentication system with PostgreSQL user storage
+- **Data Storage**: PostgreSQL database with Drizzle ORM for type-safe operations
 - **Type Safety**: Shared schema definitions between client and server using Zod
+- **Investment Growth**: Automated 3% daily compound growth calculation based on funding timestamps
 
 ### Database Schema
-The application defines three main entities:
-- **Users**: Authentication and profile information
-- **Investments**: Portfolio holdings with real-time pricing
-- **Activities**: Transaction history (buy, sell, dividend)
+The application defines four main entities:
+- **Users**: Authentication and profile information with PostgreSQL storage
+- **Investments**: Portfolio holdings with real-time pricing (demo data)
+- **Activities**: Transaction history (demo data for buy, sell, dividend)
+- **Funding Transactions**: Real crypto funding records with amounts, wallet addresses, and timestamps for growth calculations
 
 ## Data Flow
 
-1. **Authentication Flow**: Users log in through a simplified demo system that creates/retrieves user accounts
-2. **Dashboard Loading**: Investment and activity data is loaded from localStorage (demo) or database
-3. **Portfolio Calculation**: Real-time calculation of portfolio value, gains/losses, and allocation
-4. **Data Persistence**: Client-side localStorage for demo data, with backend API structure ready for production
+1. **Authentication Flow**: Users register/login through PostgreSQL-backed authentication system
+2. **Funding Process**: Users fund accounts via crypto with predefined wallet addresses stored in database
+3. **Portfolio Calculation**: Real-time calculation based on funding transactions with 3% daily compound growth
+4. **Dashboard Loading**: Live portfolio data fetched from database, demo investment/activity data from localStorage
+5. **Data Persistence**: User accounts and funding transactions in PostgreSQL, investment portfolio calculated dynamically
 
 ## External Dependencies
 
@@ -71,6 +74,13 @@ The application uses autoscaling deployment target and serves both API and stati
 
 ## Changelog
 
+- June 19, 2025. Enhanced investment platform with PostgreSQL database integration
+  - Added user registration and authentication with database storage
+  - Implemented crypto funding system with predefined wallet addresses
+  - Added funding transaction tracking and portfolio growth calculations
+  - Integrated 3% daily compound growth calculations based on funding timestamps
+  - Updated dashboard with real-time portfolio data from database
+  - Added loading states and improved user experience
 - June 18, 2025. Initial setup
 
 ## User Preferences

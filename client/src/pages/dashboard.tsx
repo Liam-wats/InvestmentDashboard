@@ -16,14 +16,16 @@ import { Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { getStoredAuth } from "@/lib/auth";
+import { getStoredAuth, clearStoredAuth } from "@/lib/auth";
 import { 
   getStoredInvestments, 
   getStoredActivities, 
   calculatePortfolioStats, 
   getPortfolioAllocation 
 } from "@/lib/storage";
+import { fetchPortfolioData, calculatePortfolioAllocation, type PortfolioData } from "@/lib/portfolio";
 import type { Investment, Activity } from "@shared/schema";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Dashboard() {
   const [, navigate] = useLocation();
@@ -32,17 +34,37 @@ export default function Dashboard() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [chartInstance, setChartInstance] = useState<any>(null);
 
+  const authData = getStoredAuth();
+
+  // Fetch real portfolio data from database
+  const { data: portfolioData, isLoading: portfolioLoading } = useQuery({
+    queryKey: ['portfolio', authData.user?.id],
+    queryFn: () => authData.user ? fetchPortfolioData(authData.user.id) : Promise.resolve({
+      totalInvested: 0,
+      currentValue: 0,
+      roi: 0,
+      profit: 0,
+      transactions: []
+    }),
+    enabled: !!authData.user?.id,
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  const handleLogout = () => {
+    clearStoredAuth();
+    navigate('/');
+  };
+
   useEffect(() => {
-    const auth = getStoredAuth();
-    if (!auth.isAuthenticated) {
+    if (!authData.isAuthenticated) {
       navigate('/login');
       return;
     }
 
-    // Load data
+    // Load demo data for display
     setInvestments(getStoredInvestments());
     setActivities(getStoredActivities());
-  }, [navigate]);
+  }, [navigate, authData.isAuthenticated]);
 
   useEffect(() => {
     // Initialize chart when investments change
@@ -58,9 +80,9 @@ export default function Dashboard() {
     };
   }, [investments]);
 
-  const auth = getStoredAuth();
-  const stats = calculatePortfolioStats(investments);
-  const allocation = getPortfolioAllocation(investments);
+  // Use portfolio data from database or fallback to demo data
+  const stats = portfolioData || calculatePortfolioStats(investments);
+  const allocation = calculatePortfolioAllocation(stats.currentValue || 0);
 
   const initializeChart = () => {
     const canvas = document.getElementById('portfolioChart') as HTMLCanvasElement;
@@ -219,7 +241,7 @@ export default function Dashboard() {
           <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                Welcome back, {auth.user?.name}! 👋
+                Welcome back, {authData.user?.name}! 👋
               </h1>
               <p className="text-gray-600 dark:text-gray-300">
                 Here's how your investments are performing today.
@@ -227,19 +249,11 @@ export default function Dashboard() {
             </div>
             <div className="flex gap-3">
               <Button 
-                onClick={() => navigate('/buy-crypto')}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Coins className="w-4 h-4" />
-                Buy with Crypto
-              </Button>
-              <Button 
-                onClick={() => navigate('/buy-crypto')}
+                onClick={() => navigate('/fund-account')}
                 className="bg-emerald-500 hover:bg-emerald-600 flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
-                Buy More Shares
+                Fund Account
               </Button>
             </div>
           </div>
@@ -254,12 +268,21 @@ export default function Dashboard() {
                   </h3>
                   <DollarSign className="w-5 h-5 text-blue-500" />
                 </div>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                  {formatCurrency(stats.totalInvested)}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Since January 2024
-                </p>
+                {portfolioLoading ? (
+                  <div className="animate-pulse">
+                    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                      {formatCurrency(stats.totalInvested)}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Principal amount
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -271,12 +294,21 @@ export default function Dashboard() {
                   </h3>
                   <TrendingUp className="w-5 h-5 text-emerald-500" />
                 </div>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                  {formatCurrency(stats.currentValue)}
-                </p>
-                <p className="text-sm text-emerald-500 font-medium">
-                  +{formatCurrency(stats.profit)} this year
-                </p>
+                {portfolioLoading ? (
+                  <div className="animate-pulse">
+                    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                      {formatCurrency(stats.currentValue)}
+                    </p>
+                    <p className="text-sm text-emerald-500 font-medium">
+                      +{formatCurrency(stats.profit)} profit
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -288,12 +320,21 @@ export default function Dashboard() {
                   </h3>
                   <BarChart3 className="w-5 h-5 text-purple-500" />
                 </div>
-                <p className="text-3xl font-bold text-emerald-500 mb-2">
-                  +{stats.roi.toFixed(1)}%
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Above market average
-                </p>
+                {portfolioLoading ? (
+                  <div className="animate-pulse">
+                    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-28"></div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-3xl font-bold text-emerald-500 mb-2">
+                      +{stats.roi.toFixed(1)}%
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      3% daily growth
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>

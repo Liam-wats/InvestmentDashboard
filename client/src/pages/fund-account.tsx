@@ -3,15 +3,15 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { 
-  Bitcoin, 
   Loader2, 
   DollarSign, 
   Wallet, 
-  TrendingUp, 
   CheckCircle, 
   AlertCircle,
   ArrowRight,
-  Coins
+  Coins,
+  Copy,
+  QrCode
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,43 +22,70 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { getStoredAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-import { z } from "zod";
+import { apiRequest } from "@/lib/queryClient";
+import { cryptoFundingSchema, type CryptoFundingData } from "@shared/schema";
 
-const cryptoSchema = z.object({
-  cryptocurrency: z.string().min(1, "Please select a cryptocurrency"),
-  investmentAmount: z.string().min(1, "Investment amount is required").refine(
-    (val) => !isNaN(Number(val)) && Number(val) > 0,
-    "Must be a valid positive number"
-  ),
-  walletAddress: z.string().min(26, "Please enter a valid wallet address"),
-  stockSymbol: z.string().min(1, "Please select a stock to purchase"),
-});
-
-type CryptoFormData = z.infer<typeof cryptoSchema>;
-
-interface CryptoRate {
+interface CryptoOption {
   symbol: string;
   name: string;
   price: number;
   change24h: number;
   icon: string;
+  walletAddress: string;
+  network?: string;
 }
 
-export default function BuyCrypto() {
+export default function FundAccount() {
   const [, navigate] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [transactionStep, setTransactionStep] = useState<'form' | 'processing' | 'success' | 'error'>('form');
-  const [cryptoRates, setCryptoRates] = useState<CryptoRate[]>([]);
-  const [selectedCrypto, setSelectedCrypto] = useState<CryptoRate | null>(null);
+  const [selectedCrypto, setSelectedCrypto] = useState<CryptoOption | null>(null);
   const { toast } = useToast();
 
-  const form = useForm<CryptoFormData>({
-    resolver: zodResolver(cryptoSchema),
+  const cryptoOptions: CryptoOption[] = [
+    {
+      symbol: "BTC",
+      name: "Bitcoin",
+      price: 43250.75,
+      change24h: 2.45,
+      icon: "₿",
+      walletAddress: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+      network: "Bitcoin Network"
+    },
+    {
+      symbol: "ETH",
+      name: "Ethereum",
+      price: 2580.32,
+      change24h: -1.23,
+      icon: "Ξ",
+      walletAddress: "0x742d35Cc6634C0532925a3b8D89C1F8E0C1F8AD9",
+      network: "Ethereum Mainnet"
+    },
+    {
+      symbol: "USDT",
+      name: "Tether USD",
+      price: 1.00,
+      change24h: 0.01,
+      icon: "₮",
+      walletAddress: "TQrZ9dpf6S3ckHF4nwD8YC8b5G3PtjVAzF",
+      network: "Tron Network"
+    },
+    {
+      symbol: "BNB",
+      name: "BNB",
+      price: 315.67,
+      change24h: 0.85,
+      icon: "◊",
+      walletAddress: "bnb1jxfh2g85q3v0tdq56fnevx6xcxtcnhtsmcu64k",
+      network: "BNB Chain"
+    },
+  ];
+
+  const form = useForm<CryptoFundingData>({
+    resolver: zodResolver(cryptoFundingSchema),
     defaultValues: {
       cryptocurrency: "",
-      investmentAmount: "",
-      walletAddress: "",
-      stockSymbol: "",
+      amount: "",
     },
   });
 
@@ -68,92 +95,62 @@ export default function BuyCrypto() {
       navigate('/login');
       return;
     }
-
-    // Load crypto rates (mock data with realistic prices)
-    setCryptoRates([
-      {
-        symbol: "BTC",
-        name: "Bitcoin",
-        price: 43250.75,
-        change24h: 2.45,
-        icon: "₿"
-      },
-      {
-        symbol: "ETH",
-        name: "Ethereum",
-        price: 2580.32,
-        change24h: -1.23,
-        icon: "Ξ"
-      },
-      {
-        symbol: "BNB",
-        name: "Binance Coin",
-        price: 315.67,
-        change24h: 0.85,
-        icon: "◊"
-      },
-      {
-        symbol: "ADA",
-        name: "Cardano",
-        price: 0.52,
-        change24h: 3.21,
-        icon: "₳"
-      },
-      {
-        symbol: "SOL",
-        name: "Solana",
-        price: 98.45,
-        change24h: 4.67,
-        icon: "◎"
-      },
-    ]);
   }, [navigate]);
 
   const watchedCrypto = form.watch("cryptocurrency");
   
   useEffect(() => {
     if (watchedCrypto) {
-      const crypto = cryptoRates.find(c => c.symbol === watchedCrypto);
+      const crypto = cryptoOptions.find(c => c.symbol === watchedCrypto);
       setSelectedCrypto(crypto || null);
     }
-  }, [watchedCrypto, cryptoRates]);
+  }, [watchedCrypto]);
 
-  const calculateSharesAmount = () => {
-    const amount = parseFloat(form.watch("investmentAmount") || "0");
+  const calculateCryptoAmount = () => {
+    const amount = parseFloat(form.watch("amount") || "0");
     if (selectedCrypto && amount > 0) {
       return (amount / selectedCrypto.price).toFixed(6);
     }
     return "0";
   };
 
-  const onSubmit = async (data: CryptoFormData) => {
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied to clipboard",
+      description: "Wallet address has been copied to your clipboard.",
+    });
+  };
+
+  const onSubmit = async (data: CryptoFundingData) => {
     setIsLoading(true);
     setTransactionStep('processing');
     
     try {
-      // Simulate transaction processing
+      const auth = getStoredAuth();
+      if (!auth.user || !selectedCrypto) return;
+
+      // Submit funding transaction to backend
+      await apiRequest('/api/funding', 'POST', {
+        userId: auth.user.id,
+        cryptocurrency: data.cryptocurrency,
+        amount: data.amount,
+        walletAddress: selectedCrypto.walletAddress,
+      });
+
+      // Simulate processing delay
       await new Promise(resolve => setTimeout(resolve, 3000));
       
-      // Simulate random success/failure (90% success rate)
-      if (Math.random() > 0.1) {
-        setTransactionStep('success');
-        toast({
-          title: "Transaction Successful!",
-          description: `Your ${data.stockSymbol} shares have been purchased with ${selectedCrypto?.name}.`,
-        });
-      } else {
-        setTransactionStep('error');
-        toast({
-          title: "Transaction Failed",
-          description: "Please check your wallet balance and try again.",
-          variant: "destructive",
-        });
-      }
+      setTransactionStep('success');
+      toast({
+        title: "Funding Request Submitted!",
+        description: `Your account will be credited once the transaction is confirmed.`,
+      });
     } catch (error) {
       setTransactionStep('error');
       toast({
-        title: "Transaction Failed",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Funding Failed",
+        description: "Please try again or contact support if the problem persists.",
         variant: "destructive",
       });
     } finally {
@@ -176,9 +173,9 @@ export default function BuyCrypto() {
               <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Loader2 className="w-8 h-8 text-white animate-spin" />
               </div>
-              <h2 className="text-2xl font-bold mb-4">Processing Transaction</h2>
+              <h2 className="text-2xl font-bold mb-4">Processing Funding Request</h2>
               <p className="text-gray-600 dark:text-gray-300 mb-8">
-                Your crypto transaction is being processed. Please don't close this window.
+                Your funding request is being processed. Please send the exact amount to the provided wallet address.
               </p>
               <Progress value={66} className="w-full mb-4" />
               <p className="text-sm text-gray-500">This may take a few minutes...</p>
@@ -198,22 +195,22 @@ export default function BuyCrypto() {
               <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-2xl font-bold mb-4">Transaction Successful!</h2>
+              <h2 className="text-2xl font-bold mb-4">Funding Request Submitted!</h2>
               <p className="text-gray-600 dark:text-gray-300 mb-8">
-                Your investment has been processed successfully. You should see the shares in your portfolio shortly.
+                Your funding request has been submitted successfully. Your account will be credited once the transaction is confirmed on the blockchain.
               </p>
               <div className="space-y-4">
                 <Button
                   onClick={() => navigate('/dashboard')}
                   className="bg-emerald-600 hover:bg-emerald-700"
                 >
-                  View Portfolio
+                  View Dashboard
                 </Button>
                 <Button
                   variant="outline"
                   onClick={resetTransaction}
                 >
-                  Make Another Investment
+                  Fund Account Again
                 </Button>
               </div>
             </CardContent>
@@ -232,9 +229,9 @@ export default function BuyCrypto() {
               <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
                 <AlertCircle className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-2xl font-bold mb-4">Transaction Failed</h2>
+              <h2 className="text-2xl font-bold mb-4">Funding Failed</h2>
               <p className="text-gray-600 dark:text-gray-300 mb-8">
-                We couldn't process your transaction. Please check your wallet balance and try again.
+                We couldn't process your funding request. Please try again or contact support if the problem persists.
               </p>
               <div className="space-y-4">
                 <Button
@@ -269,25 +266,25 @@ export default function BuyCrypto() {
             ← Back to Dashboard
           </Button>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Buy Shares with Cryptocurrency
+            Fund Your Account
           </h1>
           <p className="text-gray-600 dark:text-gray-300">
-            Use your cryptocurrency to purchase stocks and ETFs directly
+            Add funds to your investment account using cryptocurrency
           </p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Crypto Rates */}
+          {/* Crypto Options */}
           <div className="lg:col-span-1">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Coins className="w-5 h-5" />
-                  Live Crypto Rates
+                  Supported Cryptocurrencies
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {cryptoRates.map((crypto) => (
+                {cryptoOptions.map((crypto) => (
                   <div
                     key={crypto.symbol}
                     className={`p-4 rounded-lg border transition-colors cursor-pointer ${
@@ -318,13 +315,13 @@ export default function BuyCrypto() {
             </Card>
           </div>
 
-          {/* Purchase Form */}
+          {/* Funding Form */}
           <div className="lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle>Investment Details</CardTitle>
+                <CardTitle>Funding Details</CardTitle>
                 <CardDescription>
-                  Enter your investment amount and wallet details
+                  Enter the amount you want to add to your account
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -344,7 +341,7 @@ export default function BuyCrypto() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {cryptoRates.map((crypto) => (
+                                {cryptoOptions.map((crypto) => (
                                   <SelectItem key={crypto.symbol} value={crypto.symbol}>
                                     {crypto.icon} {crypto.name} ({crypto.symbol})
                                   </SelectItem>
@@ -358,98 +355,84 @@ export default function BuyCrypto() {
 
                       <FormField
                         control={form.control}
-                        name="stockSymbol"
+                        name="amount"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Stock to Purchase</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select stock" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="AAPL">Apple Inc. (AAPL)</SelectItem>
-                                <SelectItem value="GOOGL">Alphabet Inc. (GOOGL)</SelectItem>
-                                <SelectItem value="MSFT">Microsoft Corp. (MSFT)</SelectItem>
-                                <SelectItem value="TSLA">Tesla Inc. (TSLA)</SelectItem>
-                                <SelectItem value="VTI">Vanguard Total Stock Market ETF (VTI)</SelectItem>
-                                <SelectItem value="SPY">SPDR S&P 500 ETF (SPY)</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <FormLabel className="flex items-center gap-2">
+                              <DollarSign className="w-4 h-4" />
+                              Amount (USD)
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter amount in USD"
+                                {...field}
+                                disabled={isLoading}
+                              />
+                            </FormControl>
+                            {selectedCrypto && field.value && (
+                              <p className="text-sm text-gray-600 dark:text-gray-300">
+                                ≈ {calculateCryptoAmount()} {selectedCrypto.symbol}
+                              </p>
+                            )}
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                     </div>
 
-                    <FormField
-                      control={form.control}
-                      name="investmentAmount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2">
-                            <DollarSign className="w-4 h-4" />
-                            Investment Amount (USD)
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter amount in USD"
-                              {...field}
-                              disabled={isLoading}
-                            />
-                          </FormControl>
-                          {selectedCrypto && field.value && (
-                            <p className="text-sm text-gray-600 dark:text-gray-300">
-                              ≈ {calculateSharesAmount()} {selectedCrypto.symbol}
-                            </p>
-                          )}
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {selectedCrypto && (
+                      <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                        <CardContent className="p-6">
+                          <h4 className="font-semibold mb-4 flex items-center gap-2">
+                            <Wallet className="w-5 h-5" />
+                            Send {selectedCrypto.symbol} to this address:
+                          </h4>
+                          <div className="space-y-4">
+                            <div>
+                              <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                                Network: {selectedCrypto.network}
+                              </p>
+                              <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-lg border">
+                                <code className="flex-1 text-sm font-mono break-all">
+                                  {selectedCrypto.walletAddress}
+                                </code>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => copyToClipboard(selectedCrypto.walletAddress)}
+                                >
+                                  <Copy className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            
+                            <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
+                              <p>• Send exactly {calculateCryptoAmount()} {selectedCrypto.symbol}</p>
+                              <p>• Do not send any other cryptocurrency to this address</p>
+                              <p>• Your account will be credited within 10-30 minutes</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
 
-                    <FormField
-                      control={form.control}
-                      name="walletAddress"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2">
-                            <Wallet className="w-4 h-4" />
-                            Wallet Address
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter your wallet address"
-                              {...field}
-                              disabled={isLoading}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {selectedCrypto && form.watch("investmentAmount") && (
+                    {selectedCrypto && form.watch("amount") && (
                       <Card className="bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800">
                         <CardContent className="p-4">
                           <h4 className="font-semibold mb-2">Transaction Summary</h4>
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
-                              <span>Investment Amount:</span>
-                              <span>${parseFloat(form.watch("investmentAmount") || "0").toLocaleString()}</span>
+                              <span>USD Amount:</span>
+                              <span>${parseFloat(form.watch("amount") || "0").toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Crypto Amount:</span>
-                              <span>{calculateSharesAmount()} {selectedCrypto.symbol}</span>
+                              <span>{calculateCryptoAmount()} {selectedCrypto.symbol}</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Current Rate:</span>
                               <span>${selectedCrypto.price.toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between font-semibold pt-2 border-t">
-                              <span>Stock to Purchase:</span>
-                              <span>{form.watch("stockSymbol") || "Not selected"}</span>
                             </div>
                           </div>
                         </CardContent>
@@ -459,16 +442,16 @@ export default function BuyCrypto() {
                     <Button
                       type="submit"
                       className="w-full bg-emerald-600 hover:bg-emerald-700"
-                      disabled={isLoading}
+                      disabled={isLoading || !selectedCrypto || !form.watch("amount")}
                     >
                       {isLoading ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processing Transaction...
+                          Processing...
                         </>
                       ) : (
                         <>
-                          Confirm Purchase
+                          Fund Account
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </>
                       )}

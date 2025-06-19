@@ -33,6 +33,17 @@ export const activities = pgTable("activities", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const fundingTransactions = pgTable("funding_transactions", {
+  id: serial("id").primaryKey(),
+  userId: serial("user_id").references(() => users.id),
+  cryptocurrency: text("cryptocurrency").notNull(), // 'BTC', 'ETH', 'USDT', etc.
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // USD amount
+  walletAddress: text("wallet_address").notNull(),
+  transactionHash: text("transaction_hash"),
+  status: text("status").notNull().default("pending"), // 'pending', 'confirmed', 'failed'
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -53,6 +64,19 @@ export const insertActivitySchema = createInsertSchema(activities).omit({
   createdAt: true,
 });
 
+export const insertFundingTransactionSchema = createInsertSchema(fundingTransactions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const cryptoFundingSchema = z.object({
+  cryptocurrency: z.string().min(1, "Please select a cryptocurrency"),
+  amount: z.string().min(1, "Amount is required").refine(
+    (val) => !isNaN(Number(val)) && Number(val) > 0,
+    "Must be a valid positive number"
+  ),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type LoginData = z.infer<typeof loginSchema>;
@@ -60,3 +84,6 @@ export type Investment = typeof investments.$inferSelect;
 export type InsertInvestment = z.infer<typeof insertInvestmentSchema>;
 export type Activity = typeof activities.$inferSelect;
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
+export type FundingTransaction = typeof fundingTransactions.$inferSelect;
+export type InsertFundingTransaction = z.infer<typeof insertFundingTransactionSchema>;
+export type CryptoFundingData = z.infer<typeof cryptoFundingSchema>;

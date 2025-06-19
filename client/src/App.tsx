@@ -9,7 +9,7 @@ import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import Dashboard from "@/pages/dashboard";
-import BuyCrypto from "@/pages/buy-crypto";
+import FundAccount from "@/pages/fund-account";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -19,7 +19,7 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/dashboard" component={Dashboard} />
-      <Route path="/buy-crypto" component={BuyCrypto} />
+      <Route path="/fund-account" component={FundAccount} />
       <Route component={NotFound} />
     </Switch>
   );
