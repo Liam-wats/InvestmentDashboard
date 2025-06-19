@@ -12,6 +12,7 @@ import {
   Settings,
   Home
 } from "lucide-react";
+import { Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -214,14 +215,33 @@ export default function Dashboard() {
         </div>
 
         <div className="p-6">
-          {/* Welcome Section */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              Welcome back, {auth.user?.name}! 👋
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300">
-              Here's how your investments are performing today.
-            </p>
+          {/* Welcome Section with Buy More Button */}
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                Welcome back, {auth.user?.name}! 👋
+              </h1>
+              <p className="text-gray-600 dark:text-gray-300">
+                Here's how your investments are performing today.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => navigate('/buy-crypto')}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Coins className="w-4 h-4" />
+                Buy with Crypto
+              </Button>
+              <Button 
+                onClick={() => navigate('/buy-crypto')}
+                className="bg-emerald-500 hover:bg-emerald-600 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Buy More Shares
+              </Button>
+            </div>
           </div>
 
           {/* Investment Summary Cards */}
@@ -365,21 +385,7 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* Buy More Shares CTA */}
-          <Card className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white">
-            <CardContent className="p-8 text-center">
-              <h3 className="text-2xl font-bold mb-2">Ready to invest more?</h3>
-              <p className="text-emerald-100 mb-6">
-                Continue building your wealth with smart investment choices.
-              </p>
-              <Button 
-                size="lg"
-                className="bg-white text-emerald-600 hover:text-emerald-700 hover:bg-gray-50"
-              >
-                Buy More Shares
-              </Button>
-            </CardContent>
-          </Card>
+
         </div>
       </div>
     </div>

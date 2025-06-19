@@ -142,6 +142,7 @@ export default function Login() {
                     <Button
                       variant="link"
                       className="px-0 text-emerald-600 hover:text-emerald-500"
+                      onClick={() => navigate('/register')}
                     >
                       Create Account
                     </Button>

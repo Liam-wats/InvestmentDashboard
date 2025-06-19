@@ -46,6 +46,12 @@ export function Navigation({ onAuthAction }: NavigationProps) {
     onAuthAction?.();
   };
 
+  const handleRegister = () => {
+    navigate('/register');
+    setIsOpen(false);
+    onAuthAction?.();
+  };
+
   const NavItems = () => (
     <>
       {authState.isAuthenticated ? (
@@ -62,7 +68,7 @@ export function Navigation({ onAuthAction }: NavigationProps) {
           <Button variant="ghost" onClick={handleLogin}>
             Login
           </Button>
-          <Button onClick={handleLogin} className="bg-emerald-500 hover:bg-emerald-600">
+          <Button onClick={handleRegister} className="bg-emerald-500 hover:bg-emerald-600">
             Create Account
           </Button>
         </div>
