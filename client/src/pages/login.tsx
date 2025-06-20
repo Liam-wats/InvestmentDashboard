@@ -29,8 +29,21 @@ export default function Login() {
     setIsLoading(true);
     
     try {
-      const user = await simulateLogin(data);
-      setStoredAuth(user);
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Login failed');
+      }
+
+      const { user, token } = await response.json();
+      setStoredAuth(user, token);
       
       // Trigger auth state change event
       window.dispatchEvent(new CustomEvent('authStateChange'));
@@ -41,10 +54,10 @@ export default function Login() {
       });
       
       navigate('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Sign in failed",
-        description: "Please check your credentials and try again.",
+        description: error.message || "Please check your credentials and try again.",
         variant: "destructive",
       });
     } finally {

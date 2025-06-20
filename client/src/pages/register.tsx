@@ -50,19 +50,25 @@ export default function Register() {
     setIsLoading(true);
     
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Create user profile
-      const user = {
-        id: Date.now(),
-        name: data.name,
-        email: data.email,
-        password: "", // Don't store password in client
-        createdAt: new Date(),
-      };
-      
-      setStoredAuth(user);
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: data.name,
+          email: data.email,
+          password: data.password,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Registration failed');
+      }
+
+      const { user, token } = await response.json();
+      setStoredAuth(user, token);
       
       // Trigger auth state change event
       window.dispatchEvent(new CustomEvent('authStateChange'));
@@ -73,10 +79,10 @@ export default function Register() {
       });
       
       navigate('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Registration failed",
-        description: "Please try again or contact support if the problem persists.",
+        description: error.message || "Please try again or contact support if the problem persists.",
         variant: "destructive",
       });
     } finally {
