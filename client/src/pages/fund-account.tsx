@@ -20,10 +20,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { getStoredAuth } from "@/lib/auth";
+import { authService } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { cryptoFundingSchema, type CryptoFundingData } from "@shared/schema";
+import { cryptoService } from "@/lib/crypto";
 
 interface CryptoOption {
   symbol: string;
@@ -42,44 +43,98 @@ export default function FundAccount() {
   const [selectedCrypto, setSelectedCrypto] = useState<CryptoOption | null>(null);
   const { toast } = useToast();
 
-  const cryptoOptions: CryptoOption[] = [
+  // Real-time crypto data
+  const [cryptoPrices, setCryptoPrices] = useState<Record<string, CryptoOption>>({});
+  const [pricesLoading, setPricesLoading] = useState(true);
+
+  const baseCryptoOptions: Omit<CryptoOption, 'price' | 'change24h'>[] = [
     {
       symbol: "BTC",
       name: "Bitcoin",
-      price: 43250.75,
-      change24h: 2.45,
       icon: "₿",
-      walletAddress: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+      walletAddress: "bc1q0uanf2f9px7q5r7maka05mwanutj8gvpqym62g",
       network: "Bitcoin Network"
     },
     {
       symbol: "ETH",
       name: "Ethereum",
-      price: 2580.32,
-      change24h: -1.23,
       icon: "Ξ",
-      walletAddress: "0x742d35Cc6634C0532925a3b8D89C1F8E0C1F8AD9",
+      walletAddress: "0xCd3B1Afe359d96eD77E3f44B7A55Dc12040858D0",
       network: "Ethereum Mainnet"
     },
     {
       symbol: "USDT",
-      name: "Tether USD",
-      price: 1.00,
-      change24h: 0.01,
+      name: "Tether USD (ERC-20)",
       icon: "₮",
-      walletAddress: "TQrZ9dpf6S3ckHF4nwD8YC8b5G3PtjVAzF",
-      network: "Tron Network"
+      walletAddress: "0xCd3B1Afe359d96eD77E3f44B7A55Dc12040858D0",
+      network: "Ethereum Network"
     },
     {
       symbol: "BNB",
       name: "BNB",
-      price: 315.67,
-      change24h: 0.85,
       icon: "◊",
-      walletAddress: "bnb1jxfh2g85q3v0tdq56fnevx6xcxtcnhtsmcu64k",
-      network: "BNB Chain"
+      walletAddress: "0xCd3B1Afe359d96eD77E3f44B7A55Dc12040858D0",
+      network: "BNB Smart Chain"
     },
   ];
+
+  // Fetch real-time crypto prices
+  const fetchCryptoPrices = async () => {
+    setPricesLoading(true);
+    try {
+      const symbols = baseCryptoOptions.map(crypto => crypto.symbol);
+      const priceData = await Promise.all(
+        symbols.map(async (symbol) => {
+          try {
+            const response = await fetch(`/api/crypto/price/${symbol}`);
+            if (response.ok) {
+              const data = await response.json();
+              return { symbol, data };
+            }
+          } catch (error) {
+            console.error(`Error fetching ${symbol} price:`, error);
+          }
+          return null;
+        })
+      );
+
+      const pricesMap: Record<string, CryptoOption> = {};
+      baseCryptoOptions.forEach((base, index) => {
+        const priceInfo = priceData[index];
+        pricesMap[base.symbol] = {
+          ...base,
+          price: priceInfo?.data?.price || 0,
+          change24h: priceInfo?.data?.change24h || 0,
+        };
+      });
+
+      setCryptoPrices(pricesMap);
+    } catch (error) {
+      console.error('Error fetching crypto prices:', error);
+      // Fallback to base options with default prices
+      const fallbackPrices: Record<string, CryptoOption> = {};
+      baseCryptoOptions.forEach(base => {
+        fallbackPrices[base.symbol] = {
+          ...base,
+          price: base.symbol === 'BTC' ? 43250 : base.symbol === 'ETH' ? 2580 : base.symbol === 'BNB' ? 315 : 1,
+          change24h: 0,
+        };
+      });
+      setCryptoPrices(fallbackPrices);
+    } finally {
+      setPricesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCryptoPrices();
+    
+    // Update prices every 60 seconds
+    const priceInterval = setInterval(fetchCryptoPrices, 60000);
+    return () => clearInterval(priceInterval);
+  }, []);
+
+  const cryptoOptions = Object.values(cryptoPrices);
 
   const form = useForm<CryptoFundingData>({
     resolver: zodResolver(cryptoFundingSchema),
@@ -108,8 +163,9 @@ export default function FundAccount() {
 
   const calculateCryptoAmount = () => {
     const amount = parseFloat(form.watch("amount") || "0");
-    if (selectedCrypto && amount > 0) {
-      return (amount / selectedCrypto.price).toFixed(6);
+    if (selectedCrypto && amount > 0 && selectedCrypto.price > 0) {
+      const cryptoAmount = amount / selectedCrypto.price;
+      return cryptoAmount.toFixed(8);
     }
     return "0";
   };
@@ -123,34 +179,42 @@ export default function FundAccount() {
   };
 
   const onSubmit = async (data: CryptoFundingData) => {
+    if (!selectedCrypto) {
+      toast({
+        title: "Please select a cryptocurrency",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     setTransactionStep('processing');
     
     try {
-      const auth = getStoredAuth();
-      if (!auth.user || !selectedCrypto) return;
-
-      // Submit funding transaction to backend
-      await apiRequest('/api/funding', 'POST', {
-        userId: auth.user.id,
-        cryptocurrency: data.cryptocurrency,
+      await portfolioService.createFundingTransaction({
+        cryptocurrency: selectedCrypto.symbol,
         amount: data.amount,
         walletAddress: selectedCrypto.walletAddress,
       });
 
       // Simulate processing delay
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       setTransactionStep('success');
       toast({
         title: "Funding Request Submitted!",
-        description: `Your account will be credited once the transaction is confirmed.`,
+        description: `Your account will be credited automatically once the blockchain transaction is confirmed.`,
       });
+
+      // Redirect to dashboard after success
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 3000);
     } catch (error) {
       setTransactionStep('error');
       toast({
         title: "Funding Failed",
-        description: "Please try again or contact support if the problem persists.",
+        description: error instanceof Error ? error.message : "Please try again or contact support if the problem persists.",
         variant: "destructive",
       });
     } finally {

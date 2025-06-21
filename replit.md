@@ -54,6 +54,8 @@ The application defines four main entities:
 - **Database**: Drizzle ORM with PostgreSQL support via Neon Database connector
 - **Validation**: Zod for runtime type checking and validation
 - **Charts**: Chart.js for portfolio visualization
+- **Crypto APIs**: CoinMarketCap API for real-time cryptocurrency prices
+- **Blockchain Integration**: Transaction listeners and on-chain verification systems
 - **Utilities**: date-fns for date manipulation, clsx for conditional styling
 
 ### Development Dependencies
@@ -74,6 +76,15 @@ The application uses autoscaling deployment target and serves both API and stati
 
 ## Changelog
 
+- June 21, 2025. Major platform enhancements with blockchain integration
+  - **Real-time Crypto Integration**: Added live cryptocurrency price feeds from CoinMarketCap API
+  - **Enhanced Fund Account Page**: Real-time price updates every 60 seconds with 24h change indicators
+  - **Updated Wallet Addresses**: Implemented new secure wallet addresses for BTC, ETH, BNB, and USDT
+  - **Blockchain Transaction Listeners**: Automated on-chain transaction detection and verification system
+  - **Automatic Investment Processing**: Seamless user investment updates upon transaction confirmation
+  - **Improved Navigation**: Added prominent "Fund Account" button in navigation for authenticated users
+  - **Enhanced Security**: Multi-confirmation requirements and transaction validation
+  - **Database Schema Updates**: Extended user and transaction tables for comprehensive tracking
 - June 19, 2025. Enhanced investment platform with PostgreSQL database integration
   - Added user registration and authentication with database storage
   - Implemented crypto funding system with predefined wallet addresses

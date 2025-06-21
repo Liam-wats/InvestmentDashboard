@@ -1,0 +1,62 @@
+Update the investment platform with the following features and improvements:
+💰 Fund Account Page Enhancements
+
+    Display real-time cryptocurrency prices (from CoinMarketCap or similar API) directly on the Fund Account page.
+
+        Prices should update dynamically at regular intervals (e.g., every 60 seconds).
+
+🧭 UI/UX Adjustments
+
+    Add a "Fund Account" button to the top-right corner of the navigation bar for easy access.
+
+        Style the button consistently with the platform's design (e.g., accent color, hover effects).
+
+🔄 Wallet Address Configuration
+
+    Replace the current funding addresses with the following wallet addresses for each coin:
+
+        BTC: bc1q0uanf2f9px7q5r7maka05mwanutj8gvpqym62g
+
+        ETH: 0xCd3B1Afe359d96eD77E3f44B7A55Dc12040858D0
+
+        BNB: 0xCd3B1Afe359d96eD77E3f44B7A55Dc12040858D0
+
+        USDT (ERC-20): 0xCd3B1Afe359d96eD77E3f44B7A55Dc12040858D0
+
+    Display these wallet addresses clearly with copy-to-clipboard functionality and a note for users to send the exact amount.
+
+🔗 Blockchain Listener Integration
+
+    Once a user sends payment to one of the wallet addresses:
+
+        Use on-chain transaction listeners (e.g., via Web3.js, Ethers.js, or a webhook service like Moralis or Alchemy) to detect incoming transactions.
+
+        Automatically verify the transaction (correct amount, confirmations).
+
+        Upon successful confirmation:
+
+            Update the user's total invested amount in the database.
+
+            Reflect the updated value in the user’s dashboard in real-time or after refresh.
+
+    This entire process should be fully automated and secure, without manual admin intervention.
+
+✅ Testing & Validation
+
+    Fully test the integration across:
+
+        Blockchain listeners
+
+        Backend investment update logic
+
+        Real-time price display
+
+        Wallet address display
+
+    Confirm that the total invested amount updates accurately and reliably after each confirmed on-chain transaction.
+
+Optional Enhancements
+
+    Add email or in-app notifications to alert users when their funding is confirmed.
+
+    Log transactions for audit and transparency

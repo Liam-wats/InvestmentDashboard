@@ -57,8 +57,15 @@ export function Navigation({ onAuthAction }: NavigationProps) {
       {authState.isAuthenticated ? (
         <div className="flex items-center gap-4">
           <span className="text-sm font-medium">
-            Welcome, {authState.user?.name}
+            Welcome, {user?.name}
           </span>
+          <Button 
+            variant="default" 
+            onClick={() => navigate('/fund-account')}
+            className="bg-emerald-500 hover:bg-emerald-600 text-white"
+          >
+            Fund Account
+          </Button>
           <Button variant="outline" onClick={handleLogout}>
             Logout
           </Button>
