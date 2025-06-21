@@ -45,6 +45,27 @@ export async function processUserROI(userId: number): Promise<void> {
     const totalInvested = parseFloat(user.totalInvested || "0");
     const currentBalance = parseFloat(user.currentBalance || "0");
     
+    // Check if ROI was already processed today
+    const lastRoiUpdate = user.lastRoiUpdate ? new Date(user.lastRoiUpdate) : null;
+    const now = new Date();
+    
+    if (lastRoiUpdate) {
+      const timeDiff = now.getTime() - lastRoiUpdate.getTime();
+      const hoursDiff = timeDiff / (1000 * 60 * 60);
+      
+      // Only process ROI if it's been more than 24 hours since last update
+      if (hoursDiff < 24) {
+        console.log(`ROI already processed for user ${userId} within last 24 hours`);
+        return;
+      }
+    }
+    
+    // Only process ROI if user has invested funds
+    if (totalInvested <= 0) {
+      console.log(`User ${userId} has no investments, skipping ROI`);
+      return;
+    }
+    
     // Calculate current daily ROI rate
     const dailyROI = calculateDailyROI(totalInvested);
     
@@ -57,7 +78,7 @@ export async function processUserROI(userId: number): Promise<void> {
       .set({
         currentBalance: newBalance.toFixed(2),
         dailyRoi: dailyROI.toFixed(2),
-        lastRoiUpdate: new Date(),
+        lastRoiUpdate: now,
       })
       .where(eq(users.id, userId));
 
@@ -92,10 +113,10 @@ export function startROICronJob(): void {
     timezone: "UTC"
   });
 
-  // Also run every 5 minutes for testing (remove in production)
+  // Also run every hour for testing in development (but still respect 24-hour limit)
   if (process.env.NODE_ENV === "development") {
-    cron.schedule('*/5 * * * *', async () => {
-      console.log("Running ROI calculation (development mode)...");
+    cron.schedule('0 * * * *', async () => {
+      console.log("Running ROI calculation check (development mode)...");
       await processAllUsersROI();
     });
   }

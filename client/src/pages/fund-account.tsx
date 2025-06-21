@@ -189,8 +189,8 @@ export default function FundAccount() {
       setTransactionStep('success');
 
       toast({
-        title: "Funding transaction created!",
-        description: `Your ${selectedCrypto.symbol} deposit of $${data.amount} has been confirmed and added to your portfolio.`,
+        title: "Funding transaction submitted!",
+        description: `Your ${selectedCrypto.symbol} deposit of $${data.amount} is pending blockchain confirmation. Please wait for confirmation before funds are credited.`,
       });
 
       // Redirect to dashboard after 3 seconds

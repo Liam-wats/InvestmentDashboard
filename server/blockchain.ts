@@ -46,26 +46,36 @@ class BlockchainService {
         .where(eq(fundingTransactions.status, 'pending'));
 
       for (const transaction of pendingTransactions) {
-        // Simulate blockchain confirmation after 2 minutes
+        // Simulate blockchain confirmation after 2 minutes (in real implementation, this would check actual blockchain)
         const createdAt = transaction.createdAt ? new Date(transaction.createdAt) : new Date();
         const now = new Date();
         const timeDiff = now.getTime() - createdAt.getTime();
         
-        if (timeDiff > 120000) { // 2 minutes
+        if (timeDiff > 120000) { // 2 minutes - simulate blockchain detection
           await this.simulateBlockchainConfirmation(transaction.id);
         }
       }
 
-      // Process blockchain-confirmed transactions that need completion
+      // Process blockchain-confirmed transactions that need completion (simulate confirmation accumulation)
       const blockchainConfirmed = await db.select()
         .from(fundingTransactions)
         .where(eq(fundingTransactions.status, 'blockchain_confirmed'));
 
       for (const transaction of blockchainConfirmed) {
-        // Check if we have sufficient confirmations (default to 3 if not set)
-        const requiredConf = transaction.requiredConfirmations || 3;
-        const currentConf = transaction.blockConfirmations || 0;
-        if (currentConf >= requiredConf) {
+        const confirmedAt = transaction.createdAt ? new Date(transaction.createdAt) : new Date();
+        const now = new Date();
+        const timeDiff = now.getTime() - confirmedAt.getTime();
+        
+        // Simulate that we need at least 5 minutes for sufficient confirmations
+        if (timeDiff > 300000) { // 5 minutes total
+          // Update confirmations before completing
+          await db.update(fundingTransactions)
+            .set({ 
+              blockConfirmations: 6,
+              requiredConfirmations: 3
+            })
+            .where(eq(fundingTransactions.id, transaction.id));
+            
           await this.completeTransaction(transaction.id);
         }
       }
@@ -101,6 +111,13 @@ class BlockchainService {
       if (transaction.length === 0) return;
 
       const txData = transaction[0];
+      
+      // Only process if transaction is still in blockchain_confirmed status
+      if (txData.status !== 'blockchain_confirmed') {
+        console.log(`Transaction ${transactionId} already processed or not ready for completion`);
+        return;
+      }
+
       const amount = parseFloat(txData.amount);
 
       // Update user investment only after blockchain confirmation
