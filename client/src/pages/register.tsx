@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { insertUserSchema } from "@shared/schema";
-import { setStoredAuth } from "@/lib/auth";
+import { authService } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
@@ -50,25 +50,11 @@ export default function Register() {
     setIsLoading(true);
     
     try {
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: data.name,
-          email: data.email,
-          password: data.password,
-        }),
+      await authService.register({
+        name: data.name,
+        email: data.email,
+        password: data.password,
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Registration failed');
-      }
-
-      const { user, token } = await response.json();
-      setStoredAuth(user, token);
       
       // Trigger auth state change event
       window.dispatchEvent(new CustomEvent('authStateChange'));
@@ -82,7 +68,7 @@ export default function Register() {
     } catch (error: any) {
       toast({
         title: "Registration failed",
-        description: error.message || "Please try again or contact support if the problem persists.",
+        description: error instanceof Error ? error.message : "Please try again or contact support if the problem persists.",
         variant: "destructive",
       });
     } finally {

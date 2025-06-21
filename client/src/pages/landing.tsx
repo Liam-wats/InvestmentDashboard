@@ -3,15 +3,14 @@ import { useLocation } from "wouter";
 import { TrendingUp, Shield, DollarSign, BarChart3, Lock, Smartphone, AlertCircle, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getStoredAuth } from "@/lib/auth";
+import { authService } from "@/lib/auth";
 
 export default function Landing() {
   const [, navigate] = useLocation();
 
   useEffect(() => {
     // Redirect to dashboard if already authenticated
-    const auth = getStoredAuth();
-    if (auth.isAuthenticated) {
+    if (authService.isAuthenticated()) {
       navigate('/dashboard');
     }
   }, [navigate]);

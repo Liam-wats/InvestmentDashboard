@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { TrendingUp, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { getStoredAuth, clearStoredAuth } from "@/lib/auth";
+import { authService } from "@/lib/auth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 interface NavigationProps {
@@ -12,12 +12,14 @@ interface NavigationProps {
 
 export function Navigation({ onAuthAction }: NavigationProps) {
   const [location, navigate] = useLocation();
-  const [authState, setAuthState] = useState(getStoredAuth());
+  const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
+  const [user, setUser] = useState(authService.getUser());
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     const updateAuthState = () => {
-      setAuthState(getStoredAuth());
+      setIsAuthenticated(authService.isAuthenticated());
+      setUser(authService.getUser());
     };
 
     // Listen for storage changes
@@ -33,8 +35,9 @@ export function Navigation({ onAuthAction }: NavigationProps) {
   }, []);
 
   const handleLogout = () => {
-    clearStoredAuth();
-    setAuthState({ user: null, isAuthenticated: false });
+    authService.logout();
+    setIsAuthenticated(false);
+    setUser(null);
     window.dispatchEvent(new CustomEvent('authStateChange'));
     navigate('/');
     setIsOpen(false);
@@ -54,10 +57,10 @@ export function Navigation({ onAuthAction }: NavigationProps) {
 
   const NavItems = () => (
     <>
-      {authState.isAuthenticated ? (
+      {isAuthenticated ? (
         <div className="flex items-center gap-4">
           <span className="text-sm font-medium">
-            Welcome, {authState.user?.name}
+            Welcome, {user?.name}
           </span>
           <Button variant="outline" onClick={handleLogout}>
             Logout

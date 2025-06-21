@@ -1,75 +1,119 @@
-import { apiRequest } from "./queryClient";
+import { authService } from './auth';
 
-export interface PortfolioData {
-  totalInvested: number;
-  currentValue: number;
-  roi: number;
-  profit: number;
-  transactions: any[];
+export interface Portfolio {
+  user: {
+    id: number;
+    email: string;
+    name: string;
+    totalInvested: string;
+    currentBalance: string;
+    dailyRoi: string;
+    lastRoiUpdate: string;
+  };
+  investments: Investment[];
+  fundingTransactions: FundingTransaction[];
 }
 
-export async function fetchPortfolioData(userId: number): Promise<PortfolioData> {
-  try {
-    const response = await fetch(`/api/users/${userId}/funding-transactions`);
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        // No transactions yet, return empty portfolio
-        return {
-          totalInvested: 0,
-          currentValue: 0,
-          roi: 0,
-          profit: 0,
-          transactions: []
-        };
+export interface Investment {
+  id: number;
+  userId: number;
+  symbol: string;
+  name: string;
+  shares: string;
+  purchasePrice: string;
+  currentPrice: string;
+  type: string;
+  createdAt: string;
+}
+
+export interface FundingTransaction {
+  id: number;
+  userId: number;
+  cryptocurrency: string;
+  amount: string;
+  walletAddress: string;
+  transactionHash?: string;
+  status: string;
+  createdAt?: string;
+}
+
+class PortfolioService {
+  async getPortfolio(): Promise<Portfolio> {
+    try {
+      const response = await authService.fetchWithAuth('/api/portfolio');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch portfolio data');
       }
-      throw new Error('Failed to fetch portfolio data');
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching portfolio:', error);
+      throw error;
     }
-    
-    const transactions = await response.json();
-    
-    // Calculate portfolio based on funding transactions with 3% daily growth
-    let totalInvested = 0;
-    let currentValue = 0;
-    
-    transactions.forEach((transaction: any) => {
-      if (transaction.status === 'completed') {
-        const investedAmount = transaction.amount;
-        totalInvested += investedAmount;
-        
-        // Calculate days since funding
-        const fundingDate = new Date(transaction.createdAt);
-        const currentDate = new Date();
-        const daysDiff = Math.floor((currentDate.getTime() - fundingDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        // Apply 3% daily compound growth
-        const growthFactor = Math.pow(1.03, daysDiff);
-        currentValue += investedAmount * growthFactor;
+  }
+
+  async createFundingTransaction(data: {
+    cryptocurrency: string;
+    amount: string;
+    walletAddress: string;
+  }): Promise<FundingTransaction> {
+    try {
+      const response = await authService.fetchWithAuth('/api/funding-transactions', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create funding transaction');
       }
-    });
-    
-    const profit = currentValue - totalInvested;
-    const roi = totalInvested > 0 ? (profit / totalInvested) * 100 : 0;
-    
-    return {
-      totalInvested,
-      currentValue,
-      roi,
-      profit,
-      transactions
-    };
-  } catch (error) {
-    console.error('Error fetching portfolio data:', error);
-    // Return empty portfolio on error
-    return {
-      totalInvested: 0,
-      currentValue: 0,
-      roi: 0,
-      profit: 0,
-      transactions: []
-    };
+
+      const result = await response.json();
+      return result.transaction;
+    } catch (error) {
+      console.error('Error creating funding transaction:', error);
+      throw error;
+    }
+  }
+
+  async getUserProfile() {
+    try {
+      const response = await authService.fetchWithAuth('/api/profile');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch user profile');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      throw error;
+    }
+  }
+
+  formatCurrency(amount: string | number): string {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num);
+  }
+
+  formatPercentage(percentage: string | number): string {
+    const num = typeof percentage === 'string' ? parseFloat(percentage) : percentage;
+    return `${num.toFixed(2)}%`;
+  }
+
+  calculateROI(totalInvested: number, currentBalance: number): number {
+    if (totalInvested === 0) return 0;
+    return ((currentBalance - totalInvested) / totalInvested) * 100;
   }
 }
+
+export const portfolioService = new PortfolioService();
 
 export function calculatePortfolioAllocation(portfolioValue: number) {
   // Simulate portfolio allocation for display
