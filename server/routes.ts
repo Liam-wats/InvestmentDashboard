@@ -1,9 +1,9 @@
 import express, { type Express, Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { createServer, type Server } from "http";
-import { insertUserSchema, loginSchema, type User, type InsertUser, type LoginData } from "@shared/schema";
+import { insertUserSchema, loginSchema, kycVerificationSchema, withdrawalSchema, type User, type InsertUser, type LoginData, type KYCVerificationData, type WithdrawalData } from "@shared/schema";
 import { db } from "./db";
-import { users, fundingTransactions, investments } from "@shared/schema";
+import { users, fundingTransactions, investments, withdrawalTransactions } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import session from "express-session";
 import pgSession from "connect-pg-simple";
@@ -170,19 +170,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid amount" });
       }
 
+      // Check if user is verified
+      const user = await db.select().from(users).where(eq(users.id, req.userId!)).limit(1);
+      if (user.length === 0 || !user[0].isVerified) {
+        return res.status(403).json({ message: "Identity verification required before funding" });
+      }
+
       const transaction = await db.insert(fundingTransactions).values({
         userId: req.userId!,
         cryptocurrency,
         amount: numericAmount.toFixed(2),
         walletAddress,
-        status: "confirmed", // Auto-confirm for demo
+        status: "pending", // Properly set to pending for blockchain validation
       }).returning();
 
-      // Update user's investment
-      await updateUserInvestment(req.userId!, numericAmount);
-
       res.json({ 
-        message: "Funding transaction created successfully", 
+        message: "Funding transaction created successfully. Awaiting blockchain confirmation.", 
         transaction: transaction[0] 
       });
     } catch (error) {
@@ -208,6 +211,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentBalance: user[0].currentBalance,
         dailyRoi: user[0].dailyRoi,
         lastRoiUpdate: user[0].lastRoiUpdate,
+        isVerified: user[0].isVerified,
+        verificationStatus: user[0].verificationStatus,
         createdAt: user[0].createdAt,
       });
     } catch (error) {
@@ -267,6 +272,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error fetching portfolio:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // KYC Verification (protected route)
+  app.post("/api/kyc/verify", authenticateToken, validateRequest(kycVerificationSchema), async (req: AuthRequest, res) => {
+    try {
+      const { ssnOrNationalId, idDocumentUrl } = req.body as KYCVerificationData;
+      
+      await db.update(users)
+        .set({
+          ssnOrNationalId,
+          idDocumentUrl,
+          verificationStatus: "approved", // Auto-approve for demo
+          isVerified: true
+        })
+        .where(eq(users.id, req.userId!));
+
+      res.json({ message: "Identity verification completed successfully" });
+    } catch (error) {
+      console.error("Error verifying identity:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Create withdrawal request (protected route)
+  app.post("/api/withdrawals", authenticateToken, validateRequest(withdrawalSchema), async (req: AuthRequest, res) => {
+    try {
+      const { cryptocurrency, amount, walletAddress } = req.body as WithdrawalData;
+      
+      const user = await db.select().from(users).where(eq(users.id, req.userId!)).limit(1);
+      if (user.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if user is verified
+      if (!user[0].isVerified) {
+        return res.status(403).json({ message: "Identity verification required before withdrawal" });
+      }
+
+      const numericAmount = parseFloat(amount);
+      const currentBalance = parseFloat(user[0].currentBalance || "0");
+
+      // Validate sufficient balance
+      if (numericAmount > currentBalance) {
+        return res.status(400).json({ message: "Insufficient balance" });
+      }
+
+      // Minimum withdrawal amount
+      if (numericAmount < 50) {
+        return res.status(400).json({ message: "Minimum withdrawal amount is $50" });
+      }
+
+      // Create withdrawal transaction
+      const withdrawal = await db.insert(withdrawalTransactions).values({
+        userId: req.userId!,
+        cryptocurrency,
+        amount: numericAmount.toFixed(2),
+        walletAddress,
+        status: "pending"
+      }).returning();
+
+      // Update user balance
+      const newBalance = currentBalance - numericAmount;
+      await db.update(users)
+        .set({ currentBalance: newBalance.toFixed(2) })
+        .where(eq(users.id, req.userId!));
+
+      res.json({ 
+        message: "Withdrawal request submitted successfully", 
+        withdrawal: withdrawal[0] 
+      });
+    } catch (error) {
+      console.error("Error creating withdrawal:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Get user withdrawals (protected route)
+  app.get("/api/withdrawals", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const withdrawals = await db.select()
+        .from(withdrawalTransactions)
+        .where(eq(withdrawalTransactions.userId, req.userId!));
+
+      res.json(withdrawals);
+    } catch (error) {
+      console.error("Error fetching withdrawals:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

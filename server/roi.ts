@@ -10,26 +10,13 @@ export interface ROITier {
 }
 
 export const ROI_TIERS: ROITier[] = [
-  { minAmount: 100, maxAmount: 500, dailyRate: 1.5 },
-  { minAmount: 600, maxAmount: 1000, dailyRate: 2.5 },
-  { minAmount: 1001, maxAmount: 2000, dailyRate: 3.5 },
-  { minAmount: 2001, maxAmount: 3000, dailyRate: 4.5 },
-  { minAmount: 3001, maxAmount: 4000, dailyRate: 5.5 },
-  { minAmount: 4001, maxAmount: 5000, dailyRate: 6.5 },
-  { minAmount: 5001, maxAmount: 10000, dailyRate: 7.5 },
-  { minAmount: 10001, maxAmount: 20000, dailyRate: 8.5 },
-  { minAmount: 20001, maxAmount: 30000, dailyRate: 9.5 },
-  { minAmount: 30001, maxAmount: 40000, dailyRate: 10.5 },
-  { minAmount: 40001, maxAmount: 50000, dailyRate: 11.5 },
-  { minAmount: 50001, maxAmount: 100000, dailyRate: 12.5 },
-  { minAmount: 100001, maxAmount: 250000, dailyRate: 13.5 },
-  { minAmount: 250001, maxAmount: 500000, dailyRate: 14.5 },
-  { minAmount: 500001, maxAmount: Infinity, dailyRate: 15.0 },
+  { minAmount: 100, maxAmount: 500, dailyRate: 5.0 },
+  { minAmount: 600, maxAmount: 9000, dailyRate: 10.0 },
+  { minAmount: 10000, maxAmount: Infinity, dailyRate: 25.0 },
 ];
 
 export function calculateDailyROI(totalInvested: number): number {
   if (totalInvested < 100) return 0;
-  if (totalInvested > 500000) return 15.0;
 
   for (const tier of ROI_TIERS) {
     if (totalInvested >= tier.minAmount && totalInvested <= tier.maxAmount) {
@@ -41,12 +28,8 @@ export function calculateDailyROI(totalInvested: number): number {
 }
 
 export function calculateROIGrowth(currentBalance: number, dailyROI: number): number {
-  if (currentBalance > 500000) return 0;
   const growth = currentBalance * (dailyROI / 100);
-  const newBalance = currentBalance + growth;
-  
-  // Cap at $500,000
-  return Math.min(newBalance, 500000) - currentBalance;
+  return growth;
 }
 
 export async function processUserROI(userId: number): Promise<void> {

@@ -1,6 +1,7 @@
 import { db } from './db';
 import { users, fundingTransactions } from '@shared/schema';
 import { eq, and, isNull } from 'drizzle-orm';
+import { updateUserInvestment } from './roi';
 
 class BlockchainService {
   private initialized = false;
@@ -42,25 +43,77 @@ class BlockchainService {
       // Find all pending funding transactions that need blockchain confirmation
       const pendingTransactions = await db.select()
         .from(fundingTransactions)
-        .where(
-          and(
-            eq(fundingTransactions.status, 'confirmed'),
-            isNull(fundingTransactions.transactionHash)
-          )
-        );
+        .where(eq(fundingTransactions.status, 'pending'));
 
       for (const transaction of pendingTransactions) {
-        // For demo purposes, auto-confirm transactions after 2 minutes
+        // Simulate blockchain confirmation after 2 minutes
         const createdAt = transaction.createdAt ? new Date(transaction.createdAt) : new Date();
         const now = new Date();
         const timeDiff = now.getTime() - createdAt.getTime();
         
         if (timeDiff > 120000) { // 2 minutes
-          await this.confirmTransaction(transaction.id, `demo_tx_${transaction.id}_${Date.now()}`);
+          await this.simulateBlockchainConfirmation(transaction.id);
+        }
+      }
+
+      // Process blockchain-confirmed transactions that need completion
+      const blockchainConfirmed = await db.select()
+        .from(fundingTransactions)
+        .where(eq(fundingTransactions.status, 'blockchain_confirmed'));
+
+      for (const transaction of blockchainConfirmed) {
+        // Check if we have sufficient confirmations (default to 3 if not set)
+        const requiredConf = transaction.requiredConfirmations || 3;
+        const currentConf = transaction.blockConfirmations || 0;
+        if (currentConf >= requiredConf) {
+          await this.completeTransaction(transaction.id);
         }
       }
     } catch (error) {
       console.error('Error processing queued transactions:', error);
+    }
+  }
+
+  private async simulateBlockchainConfirmation(transactionId: number) {
+    try {
+      const hashTx = `0x${Math.random().toString(16).substring(2)}${transactionId}`;
+      
+      await db.update(fundingTransactions)
+        .set({
+          transactionHash: hashTx,
+          status: 'blockchain_confirmed'
+        })
+        .where(eq(fundingTransactions.id, transactionId));
+
+      console.log(`Blockchain confirmation simulated for transaction ${transactionId}: ${hashTx}`);
+    } catch (error) {
+      console.error('Error simulating blockchain confirmation:', error);
+    }
+  }
+
+  private async completeTransaction(transactionId: number) {
+    try {
+      const transaction = await db.select()
+        .from(fundingTransactions)
+        .where(eq(fundingTransactions.id, transactionId))
+        .limit(1);
+
+      if (transaction.length === 0) return;
+
+      const txData = transaction[0];
+      const amount = parseFloat(txData.amount);
+
+      // Update user investment only after blockchain confirmation
+      await updateUserInvestment(txData.userId, amount);
+
+      // Mark transaction as completed
+      await db.update(fundingTransactions)
+        .set({ status: 'completed' })
+        .where(eq(fundingTransactions.id, transactionId));
+
+      console.log(`Transaction completed: User ${txData.userId} funded with $${amount}`);
+    } catch (error) {
+      console.error('Error completing transaction:', error);
     }
   }
 
@@ -70,7 +123,7 @@ class BlockchainService {
       await db.update(fundingTransactions)
         .set({
           transactionHash: blockchainHash,
-          status: 'confirmed'
+          status: 'blockchain_confirmed'
         })
         .where(eq(fundingTransactions.id, transactionId));
 

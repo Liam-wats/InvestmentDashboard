@@ -10,6 +10,8 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import Dashboard from "@/pages/dashboard";
 import FundAccount from "@/pages/fund-account";
+import KYCVerification from "@/pages/kyc-verification";
+import Withdraw from "@/pages/withdraw";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -20,6 +22,8 @@ function Router() {
       <Route path="/register" component={Register} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/fund-account" component={FundAccount} />
+      <Route path="/kyc-verification" component={KYCVerification} />
+      <Route path="/withdraw" component={Withdraw} />
       <Route component={NotFound} />
     </Switch>
   );
