@@ -1,4 +1,4 @@
-import { pgTable, text, serial, decimal, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, decimal, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -50,8 +50,8 @@ export const fundingTransactions = pgTable("funding_transactions", {
   walletAddress: text("wallet_address").notNull(),
   transactionHash: text("transaction_hash"),
   status: text("status").notNull().default("pending"), // 'pending', 'blockchain_confirmed', 'completed', 'failed'
-  blockConfirmations: serial("block_confirmations"),
-  requiredConfirmations: serial("required_confirmations"),
+  blockConfirmations: integer("block_confirmations").default(0),
+  requiredConfirmations: integer("required_confirmations").default(3),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
