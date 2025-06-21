@@ -107,12 +107,21 @@ export default function Dashboard() {
                   Here's an overview of your investment portfolio with dynamic ROI system
                 </p>
               </div>
-              <Button 
-                onClick={() => navigate('/fund-account')}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 font-semibold"
-              >
-                Fund Account
-              </Button>
+              <div className="flex gap-3">
+                <Button 
+                  onClick={() => navigate('/fund-account')}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 font-semibold"
+                >
+                  Fund Account
+                </Button>
+                <Button 
+                  onClick={() => navigate('/withdraw')}
+                  variant="outline"
+                  className="px-6 py-2 font-semibold"
+                >
+                  Withdraw
+                </Button>
+              </div>
             </div>
 
             {/* Portfolio Overview Cards */}
@@ -198,19 +207,19 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
                     <h4 className="font-medium text-sm mb-2">$100 - $500</h4>
-                    <p className="text-lg font-bold text-emerald-600">1.5% Daily</p>
+                    <p className="text-lg font-bold text-emerald-600">5% Daily</p>
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                    <h4 className="font-medium text-sm mb-2">$600 - $1,000</h4>
-                    <p className="text-lg font-bold text-emerald-600">2.5% Daily</p>
+                    <h4 className="font-medium text-sm mb-2">$600 - $9,000</h4>
+                    <p className="text-lg font-bold text-emerald-600">10% Daily</p>
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                    <h4 className="font-medium text-sm mb-2">$1,000+</h4>
-                    <p className="text-lg font-bold text-emerald-600">Up to 15% Daily</p>
+                    <h4 className="font-medium text-sm mb-2">$10,000+</h4>
+                    <p className="text-lg font-bold text-emerald-600">25% Daily</p>
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground mt-4">
-                  ROI increases by 1% for each $1,000 investment tier, capped at $500,000 and 15% daily.
+                  Enhanced ROI structure with higher returns based on investment tiers.
                   Last ROI update: {new Date(portfolio.user.lastRoiUpdate).toLocaleString()}
                 </p>
               </CardContent>

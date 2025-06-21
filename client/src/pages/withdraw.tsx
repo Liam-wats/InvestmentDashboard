@@ -52,7 +52,9 @@ export default function Withdraw() {
 
   const fetchUserProfile = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token") || localStorage.getItem("auth_token");
+      if (!token) return;
+      
       const response = await fetch("/api/profile", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -67,7 +69,9 @@ export default function Withdraw() {
 
   const fetchWithdrawals = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token") || localStorage.getItem("auth_token");
+      if (!token) return;
+      
       const response = await fetch("/api/withdrawals", {
         headers: { Authorization: `Bearer ${token}` },
       });
