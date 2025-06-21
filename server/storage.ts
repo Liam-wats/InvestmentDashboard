@@ -28,29 +28,49 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    // Hash the password before storing
-    const passwordHash = await bcrypt.hash(insertUser.password, 12);
-    
-    const [user] = await db
-      .insert(users)
-      .values([{
-        email: insertUser.email,
-        name: insertUser.name,
-        passwordHash
-      }])
-      .returning();
-    return user;
+    try {
+      console.log("Creating user with data:", { email: insertUser.email, name: insertUser.name });
+      
+      // Hash the password before storing
+      const passwordHash = await bcrypt.hash(insertUser.password, 12);
+      console.log("Password hashed successfully");
+      
+      const [user] = await db
+        .insert(users)
+        .values({
+          email: insertUser.email,
+          name: insertUser.name,
+          passwordHash
+        })
+        .returning();
+        
+      console.log("User created successfully:", { id: user.id, email: user.email });
+      return user;
+    } catch (error) {
+      console.error("Error in createUser:", error);
+      throw error;
+    }
   }
 
   async verifyPassword(email: string, password: string): Promise<User | null> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    
-    if (!user) {
-      return null;
-    }
+    try {
+      console.log("Verifying password for email:", email);
+      const [user] = await db.select().from(users).where(eq(users.email, email));
+      
+      if (!user) {
+        console.log("User not found");
+        return null;
+      }
 
-    const isValid = await bcrypt.compare(password, user.passwordHash);
-    return isValid ? user : null;
+      console.log("User found, comparing password");
+      const isValid = await bcrypt.compare(password, user.passwordHash);
+      console.log("Password validation result:", isValid);
+      
+      return isValid ? user : null;
+    } catch (error) {
+      console.error("Error in verifyPassword:", error);
+      throw error;
+    }
   }
 
   async createFundingTransaction(transaction: InsertFundingTransaction): Promise<FundingTransaction> {
