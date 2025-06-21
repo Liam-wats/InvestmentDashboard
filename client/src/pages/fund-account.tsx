@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { authService } from "@/lib/auth";
+import { getStoredAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { cryptoFundingSchema, type CryptoFundingData } from "@shared/schema";
@@ -103,8 +103,8 @@ export default function FundAccount() {
         const priceInfo = priceData[index];
         pricesMap[base.symbol] = {
           ...base,
-          price: priceInfo?.data?.price || 0,
-          change24h: priceInfo?.data?.change24h || 0,
+          price: priceInfo?.data?.quote?.USD?.price || 0,
+          change24h: priceInfo?.data?.quote?.USD?.percent_change_24h || 0,
         };
       });
 
@@ -191,11 +191,28 @@ export default function FundAccount() {
     setTransactionStep('processing');
     
     try {
-      await portfolioService.createFundingTransaction({
-        cryptocurrency: selectedCrypto.symbol,
-        amount: data.amount,
-        walletAddress: selectedCrypto.walletAddress,
+      const auth = getStoredAuth();
+      if (!auth.token) {
+        throw new Error("Authentication required");
+      }
+
+      const response = await fetch('/api/funding', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${auth.token}`
+        },
+        body: JSON.stringify({
+          cryptocurrency: selectedCrypto.symbol,
+          amount: parseFloat(data.amount),
+          walletAddress: selectedCrypto.walletAddress,
+        })
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to submit funding request');
+      }
 
       // Simulate processing delay
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -206,9 +223,9 @@ export default function FundAccount() {
         description: `Your account will be credited automatically once the blockchain transaction is confirmed.`,
       });
 
-      // Redirect to dashboard after success
+      // Redirect to home after success
       setTimeout(() => {
-        navigate('/dashboard');
+        navigate('/');
       }, 3000);
     } catch (error) {
       setTransactionStep('error');
@@ -224,8 +241,8 @@ export default function FundAccount() {
 
   const resetTransaction = () => {
     setTransactionStep('form');
-    form.reset();
     setSelectedCrypto(null);
+    form.reset();
   };
 
   if (transactionStep === 'processing') {
@@ -265,10 +282,10 @@ export default function FundAccount() {
               </p>
               <div className="space-y-4">
                 <Button
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate('/')}
                   className="bg-emerald-600 hover:bg-emerald-700"
                 >
-                  View Dashboard
+                  View Portfolio
                 </Button>
                 <Button
                   variant="outline"
