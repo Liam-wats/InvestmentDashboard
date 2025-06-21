@@ -78,7 +78,7 @@ export default function Register() {
         description: "Welcome to InvestWise. You can now start building your portfolio.",
       });
       
-      navigate('/dashboard');
+      navigate('/');
     } catch (error: any) {
       toast({
         title: "Registration failed",

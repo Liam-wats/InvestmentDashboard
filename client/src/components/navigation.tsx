@@ -34,7 +34,7 @@ export function Navigation({ onAuthAction }: NavigationProps) {
 
   const handleLogout = () => {
     clearStoredAuth();
-    setAuthState({ user: null, isAuthenticated: false });
+    setAuthState({ user: null, token: null, isAuthenticated: false });
     window.dispatchEvent(new CustomEvent('authStateChange'));
     navigate('/');
     setIsOpen(false);
@@ -57,7 +57,7 @@ export function Navigation({ onAuthAction }: NavigationProps) {
       {authState.isAuthenticated ? (
         <div className="flex items-center gap-4">
           <span className="text-sm font-medium">
-            Welcome, {user?.name}
+            Welcome, {authState.user?.name}
           </span>
           <Button 
             variant="default" 

@@ -76,6 +76,13 @@ The application uses autoscaling deployment target and serves both API and stati
 
 ## Changelog
 
+- June 21, 2025. Authentication system fixes and platform stabilization
+  - **Fixed Authentication Issues**: Resolved "user is not defined" errors in navigation component
+  - **Database Schema Alignment**: Updated database column names to match application code (password_hash)
+  - **Login/Registration Flow**: Successfully tested user registration and authentication endpoints
+  - **Navigation Updates**: Fixed user state management and logout functionality
+  - **API Endpoint Testing**: Verified cryptocurrency price feeds and authentication endpoints
+  - **Error Handling**: Improved error logging and debugging for authentication failures
 - June 21, 2025. Major platform enhancements with blockchain integration
   - **Real-time Crypto Integration**: Added live cryptocurrency price feeds from CoinMarketCap API
   - **Enhanced Fund Account Page**: Real-time price updates every 60 seconds with 24h change indicators

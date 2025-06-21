@@ -9,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { loginSchema, type LoginData } from "@shared/schema";
-import { simulateLogin, setStoredAuth } from "@/lib/auth";
+import { setStoredAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
@@ -53,7 +53,7 @@ export default function Login() {
         description: "You've successfully signed in to your account.",
       });
       
-      navigate('/dashboard');
+      navigate('/');
     } catch (error: any) {
       toast({
         title: "Sign in failed",
