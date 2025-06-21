@@ -11,6 +11,11 @@ export const users = pgTable("users", {
   currentBalance: decimal("current_balance", { precision: 12, scale: 2 }).default("0"),
   dailyRoi: decimal("daily_roi", { precision: 5, scale: 2 }).default("0"),
   lastRoiUpdate: timestamp("last_roi_update").defaultNow(),
+  // KYC fields
+  isVerified: boolean("is_verified").default(false),
+  idDocumentUrl: text("id_document_url"),
+  ssnOrNationalId: text("ssn_or_national_id"),
+  verificationStatus: text("verification_status").default("pending"), // pending, approved, rejected
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -44,7 +49,20 @@ export const fundingTransactions = pgTable("funding_transactions", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // USD amount
   walletAddress: text("wallet_address").notNull(),
   transactionHash: text("transaction_hash"),
-  status: text("status").notNull().default("pending"), // 'pending', 'confirmed', 'failed'
+  status: text("status").notNull().default("pending"), // 'pending', 'blockchain_confirmed', 'completed', 'failed'
+  blockConfirmations: serial("block_confirmations"),
+  requiredConfirmations: serial("required_confirmations"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const withdrawalTransactions = pgTable("withdrawal_transactions", {
+  id: serial("id").primaryKey(),
+  userId: serial("user_id").references(() => users.id),
+  cryptocurrency: text("cryptocurrency").notNull(), // 'BTC', 'ETH', 'BNB', 'USDT'
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // USD amount
+  walletAddress: text("wallet_address").notNull(),
+  transactionHash: text("transaction_hash"),
+  status: text("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed'
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -84,6 +102,22 @@ export const cryptoFundingSchema = z.object({
   ),
 });
 
+export const kycVerificationSchema = z.object({
+  ssnOrNationalId: z.string().min(1, "SSN or National ID is required"),
+  idDocumentUrl: z.string().url("Valid ID document URL is required"),
+});
+
+export const withdrawalSchema = z.object({
+  cryptocurrency: z.enum(["BTC", "ETH", "BNB", "USDT"], {
+    errorMap: () => ({ message: "Please select a valid cryptocurrency" })
+  }),
+  amount: z.string().min(1, "Amount is required").refine(
+    (val) => !isNaN(Number(val)) && Number(val) > 0,
+    "Must be a valid positive number"
+  ),
+  walletAddress: z.string().min(1, "Wallet address is required"),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type LoginData = z.infer<typeof loginSchema>;
@@ -93,4 +127,7 @@ export type Activity = typeof activities.$inferSelect;
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
 export type FundingTransaction = typeof fundingTransactions.$inferSelect;
 export type InsertFundingTransaction = z.infer<typeof insertFundingTransactionSchema>;
+export type WithdrawalTransaction = typeof withdrawalTransactions.$inferSelect;
 export type CryptoFundingData = z.infer<typeof cryptoFundingSchema>;
+export type KYCVerificationData = z.infer<typeof kycVerificationSchema>;
+export type WithdrawalData = z.infer<typeof withdrawalSchema>;

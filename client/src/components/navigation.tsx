@@ -59,6 +59,34 @@ export function Navigation({ onAuthAction }: NavigationProps) {
     <>
       {isAuthenticated ? (
         <div className="flex items-center gap-4">
+          <Link 
+            href="/dashboard"
+            onClick={() => setIsOpen(false)}
+            className="text-sm font-medium hover:text-emerald-600 transition-colors"
+          >
+            Dashboard
+          </Link>
+          <Link 
+            href="/fund-account"
+            onClick={() => setIsOpen(false)}
+            className="text-sm font-medium hover:text-emerald-600 transition-colors"
+          >
+            Fund Account
+          </Link>
+          <Link 
+            href="/withdraw"
+            onClick={() => setIsOpen(false)}
+            className="text-sm font-medium hover:text-emerald-600 transition-colors"
+          >
+            Withdraw
+          </Link>
+          <Link 
+            href="/kyc-verification"
+            onClick={() => setIsOpen(false)}
+            className="text-sm font-medium hover:text-emerald-600 transition-colors"
+          >
+            Verification
+          </Link>
           <span className="text-sm font-medium">
             Welcome, {user?.name}
           </span>
