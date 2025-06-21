@@ -61,10 +61,10 @@ export default function Register() {
       
       toast({
         title: "Account created successfully!",
-        description: "Welcome to InvestWise. You can now start building your portfolio.",
+        description: "Please complete identity verification to access all features.",
       });
       
-      navigate('/dashboard');
+      navigate('/kyc-verification');
     } catch (error) {
       toast({
         title: "Registration failed",

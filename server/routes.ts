@@ -170,9 +170,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid amount" });
       }
 
-      // Check if user is verified
+      // Check if user exists and is verified
       const user = await db.select().from(users).where(eq(users.id, req.userId!)).limit(1);
-      if (user.length === 0 || !user[0].isVerified) {
+      if (user.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (!user[0].isVerified) {
         return res.status(403).json({ message: "Identity verification required before funding" });
       }
 
