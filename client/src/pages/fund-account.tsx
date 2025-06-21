@@ -11,7 +11,10 @@ import {
   ArrowRight,
   Coins,
   Copy,
-  QrCode
+  QrCode,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +27,7 @@ import { authService } from "@/lib/auth";
 import { portfolioService } from "@/lib/portfolio";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { cryptoService } from "@/lib/crypto";
 import { cryptoFundingSchema, type CryptoFundingData } from "@shared/schema";
 
 interface CryptoOption {
@@ -39,48 +43,50 @@ interface CryptoOption {
 export default function FundAccount() {
   const [, navigate] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
+  const [priceLoading, setPriceLoading] = useState(true);
   const [transactionStep, setTransactionStep] = useState<'form' | 'processing' | 'success' | 'error'>('form');
   const [selectedCrypto, setSelectedCrypto] = useState<CryptoOption | null>(null);
+  const [lastPriceUpdate, setLastPriceUpdate] = useState<Date>(new Date());
   const { toast } = useToast();
 
-  const cryptoOptions: CryptoOption[] = [
+  const [cryptoOptions, setCryptoOptions] = useState<CryptoOption[]>([
     {
       symbol: "BTC",
       name: "Bitcoin",
-      price: 43250.75,
-      change24h: 2.45,
+      price: 0,
+      change24h: 0,
       icon: "₿",
-      walletAddress: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+      walletAddress: "bc1q0uanf2f9px7q5r7maka05mwanutj8gvpqym62g",
       network: "Bitcoin Network"
     },
     {
       symbol: "ETH",
       name: "Ethereum",
-      price: 2580.32,
-      change24h: -1.23,
+      price: 0,
+      change24h: 0,
       icon: "Ξ",
-      walletAddress: "0x742d35Cc6634C0532925a3b8D89C1F8E0C1F8AD9",
+      walletAddress: "0xCd3B1Afe359d96eD77E3f44B7A55Dc12040858D0",
       network: "Ethereum Mainnet"
-    },
-    {
-      symbol: "USDT",
-      name: "Tether USD",
-      price: 1.00,
-      change24h: 0.01,
-      icon: "₮",
-      walletAddress: "TQrZ9dpf6S3ckHF4nwD8YC8b5G3PtjVAzF",
-      network: "Tron Network"
     },
     {
       symbol: "BNB",
       name: "BNB",
-      price: 315.67,
-      change24h: 0.85,
+      price: 0,
+      change24h: 0,
       icon: "◊",
-      walletAddress: "bnb1jxfh2g85q3v0tdq56fnevx6xcxtcnhtsmcu64k",
+      walletAddress: "0xCd3B1Afe359d96eD77E3f44B7A55Dc12040858D0",
       network: "BNB Chain"
     },
-  ];
+    {
+      symbol: "USDT",
+      name: "Tether USD (ERC-20)",
+      price: 0,
+      change24h: 0,
+      icon: "₮",
+      walletAddress: "0xCd3B1Afe359d96eD77E3f44B7A55Dc12040858D0",
+      network: "Ethereum Mainnet"
+    },
+  ]);
 
   const form = useForm<CryptoFundingData>({
     resolver: zodResolver(cryptoFundingSchema),
@@ -90,11 +96,49 @@ export default function FundAccount() {
     },
   });
 
+  // Fetch real-time crypto prices
+  const fetchCryptoPrices = async () => {
+    setPriceLoading(true);
+    try {
+      const symbols = cryptoOptions.map(crypto => crypto.symbol);
+      const priceData = await cryptoService.getCoinsBySymbols(symbols);
+      
+      const updatedOptions = cryptoOptions.map(option => {
+        const coinData = priceData.find(coin => coin.symbol === option.symbol);
+        return coinData ? {
+          ...option,
+          price: coinData.price,
+          change24h: coinData.change24h
+        } : option;
+      });
+      
+      setCryptoOptions(updatedOptions);
+      setLastPriceUpdate(new Date());
+    } catch (error) {
+      console.error('Error fetching crypto prices:', error);
+      toast({
+        title: "Price Update Failed",
+        description: "Unable to fetch latest crypto prices. Please refresh manually.",
+        variant: "destructive"
+      });
+    } finally {
+      setPriceLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!authService.isAuthenticated()) {
       navigate('/login');
       return;
     }
+
+    // Initial price fetch
+    fetchCryptoPrices();
+    
+    // Auto-refresh prices every 60 seconds
+    const priceInterval = setInterval(fetchCryptoPrices, 60000);
+    
+    return () => clearInterval(priceInterval);
   }, [navigate]);
 
   const watchedCrypto = form.watch("cryptocurrency");
@@ -286,10 +330,23 @@ export default function FundAccount() {
           <div className="lg:col-span-1">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Coins className="w-5 h-5" />
-                  Supported Cryptocurrencies
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Coins className="w-5 h-5" />
+                    Supported Cryptocurrencies
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchCryptoPrices}
+                    disabled={priceLoading}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${priceLoading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
+                <CardDescription>
+                  Live prices - Last updated: {lastPriceUpdate.toLocaleTimeString()}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {cryptoOptions.map((crypto) => (
@@ -312,10 +369,22 @@ export default function FundAccount() {
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="font-bold">${crypto.price.toLocaleString()}</span>
-                      <Badge variant={crypto.change24h >= 0 ? "default" : "destructive"}>
-                        {crypto.change24h >= 0 ? '+' : ''}{crypto.change24h}%
-                      </Badge>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-lg">
+                          ${priceLoading ? '...' : cryptoService.formatPrice(crypto.price)}
+                        </span>
+                        <span className="text-xs text-gray-500">{crypto.network}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {crypto.change24h >= 0 ? (
+                          <TrendingUp className="h-3 w-3 text-emerald-500" />
+                        ) : (
+                          <TrendingDown className="h-3 w-3 text-red-500" />
+                        )}
+                        <Badge variant={crypto.change24h >= 0 ? "default" : "destructive"} className="text-xs">
+                          {priceLoading ? '...' : `${crypto.change24h >= 0 ? '+' : ''}${crypto.change24h.toFixed(2)}%`}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -440,7 +509,13 @@ export default function FundAccount() {
                             </div>
                             <div className="flex justify-between">
                               <span>Current Rate:</span>
-                              <span>${selectedCrypto.price.toLocaleString()}</span>
+                              <span>${priceLoading ? '...' : cryptoService.formatPrice(selectedCrypto.price)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-500">
+                              <span>24h Change:</span>
+                              <span className={selectedCrypto.change24h >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                                {priceLoading ? '...' : `${selectedCrypto.change24h >= 0 ? '+' : ''}${selectedCrypto.change24h.toFixed(2)}%`}
+                              </span>
                             </div>
                           </div>
                         </CardContent>

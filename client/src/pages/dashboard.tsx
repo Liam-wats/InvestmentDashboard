@@ -98,13 +98,21 @@ export default function Dashboard() {
         <div className="pt-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Welcome Section */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                Welcome back, {user?.name}!
-              </h1>
-              <p className="text-gray-600 dark:text-gray-300 mt-2">
-                Here's an overview of your investment portfolio with dynamic ROI system
-              </p>
+            <div className="mb-8 flex justify-between items-start">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  Welcome back, {user?.name}!
+                </h1>
+                <p className="text-gray-600 dark:text-gray-300 mt-2">
+                  Here's an overview of your investment portfolio with dynamic ROI system
+                </p>
+              </div>
+              <Button 
+                onClick={() => navigate('/fund-account')}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 font-semibold"
+              >
+                Fund Account
+              </Button>
             </div>
 
             {/* Portfolio Overview Cards */}
