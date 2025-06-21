@@ -9,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { loginSchema, type LoginData } from "@shared/schema";
-import { simulateLogin, setStoredAuth } from "@/lib/auth";
+import { authService } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
@@ -29,8 +29,7 @@ export default function Login() {
     setIsLoading(true);
     
     try {
-      const user = await simulateLogin(data);
-      setStoredAuth(user);
+      await authService.login(data);
       
       // Trigger auth state change event
       window.dispatchEvent(new CustomEvent('authStateChange'));
@@ -44,7 +43,7 @@ export default function Login() {
     } catch (error) {
       toast({
         title: "Sign in failed",
-        description: "Please check your credentials and try again.",
+        description: error instanceof Error ? error.message : "Please check your credentials and try again.",
         variant: "destructive",
       });
     } finally {

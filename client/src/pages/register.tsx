@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { insertUserSchema } from "@shared/schema";
-import { setStoredAuth } from "@/lib/auth";
+import { authService } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
@@ -50,19 +50,11 @@ export default function Register() {
     setIsLoading(true);
     
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Create user profile
-      const user = {
-        id: Date.now(),
+      await authService.register({
         name: data.name,
         email: data.email,
-        password: "", // Don't store password in client
-        createdAt: new Date(),
-      };
-      
-      setStoredAuth(user);
+        password: data.password,
+      });
       
       // Trigger auth state change event
       window.dispatchEvent(new CustomEvent('authStateChange'));
@@ -76,7 +68,7 @@ export default function Register() {
     } catch (error) {
       toast({
         title: "Registration failed",
-        description: "Please try again or contact support if the problem persists.",
+        description: error instanceof Error ? error.message : "Please try again or contact support if the problem persists.",
         variant: "destructive",
       });
     } finally {

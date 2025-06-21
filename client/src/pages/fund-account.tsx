@@ -20,7 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { getStoredAuth } from "@/lib/auth";
+import { authService } from "@/lib/auth";
+import { portfolioService } from "@/lib/portfolio";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { cryptoFundingSchema, type CryptoFundingData } from "@shared/schema";
@@ -90,8 +91,7 @@ export default function FundAccount() {
   });
 
   useEffect(() => {
-    const auth = getStoredAuth();
-    if (!auth.isAuthenticated) {
+    if (!authService.isAuthenticated()) {
       navigate('/login');
       return;
     }
@@ -123,35 +123,43 @@ export default function FundAccount() {
   };
 
   const onSubmit = async (data: CryptoFundingData) => {
+    if (!selectedCrypto) {
+      toast({
+        title: "Please select a cryptocurrency",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     setTransactionStep('processing');
-    
-    try {
-      const auth = getStoredAuth();
-      if (!auth.user || !selectedCrypto) return;
 
-      // Submit funding transaction to backend
-      await apiRequest('/api/funding', 'POST', {
-        userId: auth.user.id,
-        cryptocurrency: data.cryptocurrency,
+    try {
+      await portfolioService.createFundingTransaction({
+        cryptocurrency: selectedCrypto.symbol,
         amount: data.amount,
         walletAddress: selectedCrypto.walletAddress,
       });
 
-      // Simulate processing delay
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
+      await new Promise(resolve => setTimeout(resolve, 2000));
       setTransactionStep('success');
+
       toast({
-        title: "Funding Request Submitted!",
-        description: `Your account will be credited once the transaction is confirmed.`,
+        title: "Funding transaction created!",
+        description: `Your ${selectedCrypto.symbol} deposit of $${data.amount} has been confirmed and added to your portfolio.`,
       });
+
+      // Redirect to dashboard after 3 seconds
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 3000);
+
     } catch (error) {
       setTransactionStep('error');
       toast({
-        title: "Funding Failed",
-        description: "Please try again or contact support if the problem persists.",
-        variant: "destructive",
+        title: "Transaction failed",
+        description: error instanceof Error ? error.message : "Please try again or contact support.",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);

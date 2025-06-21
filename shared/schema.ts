@@ -7,6 +7,10 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
+  totalInvested: decimal("total_invested", { precision: 12, scale: 2 }).default("0"),
+  currentBalance: decimal("current_balance", { precision: 12, scale: 2 }).default("0"),
+  dailyRoi: decimal("daily_roi", { precision: 5, scale: 2 }).default("0"),
+  lastRoiUpdate: timestamp("last_roi_update").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
