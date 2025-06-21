@@ -2,6 +2,7 @@ import { User, LoginData } from "@shared/schema";
 
 export interface AuthState {
   user: User | null;
+  token: string | null;
   isAuthenticated: boolean;
 }
 
@@ -14,7 +15,8 @@ export function getStoredAuth(): AuthState {
       const parsed = JSON.parse(stored);
       return {
         user: parsed.user,
-        isAuthenticated: !!parsed.user,
+        token: parsed.token,
+        isAuthenticated: !!(parsed.user && parsed.token),
       };
     }
   } catch (error) {
@@ -23,13 +25,14 @@ export function getStoredAuth(): AuthState {
   
   return {
     user: null,
+    token: null,
     isAuthenticated: false,
   };
 }
 
-export function setStoredAuth(user: User | null): void {
+export function setStoredAuth(user: User | null, token: string | null): void {
   try {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ user }));
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ user, token }));
   } catch (error) {
     console.error("Error storing auth:", error);
   }
@@ -37,6 +40,19 @@ export function setStoredAuth(user: User | null): void {
 
 export function clearStoredAuth(): void {
   localStorage.removeItem(AUTH_STORAGE_KEY);
+}
+
+export function getAuthHeaders(): Record<string, string> {
+  const auth = getStoredAuth();
+  if (auth.token) {
+    return {
+      'Authorization': `Bearer ${auth.token}`,
+      'Content-Type': 'application/json'
+    };
+  }
+  return {
+    'Content-Type': 'application/json'
+  };
 }
 
 export async function simulateLogin(credentials: LoginData): Promise<User> {
@@ -48,7 +64,7 @@ export async function simulateLogin(credentials: LoginData): Promise<User> {
     id: 1,
     email: credentials.email,
     name: credentials.email.split('@')[0].charAt(0).toUpperCase() + credentials.email.split('@')[0].slice(1),
-    password: "", // Don't store password in client
+    passwordHash: "", // Don't store password in client
     createdAt: new Date(),
   };
   

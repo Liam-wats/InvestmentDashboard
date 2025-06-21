@@ -5,7 +5,7 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
-  password: text("password").notNull(),
+  passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -47,6 +47,9 @@ export const fundingTransactions = pgTable("funding_transactions", {
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
+  passwordHash: true,
+}).extend({
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 export const loginSchema = z.object({
