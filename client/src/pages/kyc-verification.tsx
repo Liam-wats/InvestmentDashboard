@@ -46,7 +46,13 @@ export default function KYCVerification() {
     setMessage("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token") || localStorage.getItem("auth_token");
+      if (!token) {
+        setMessage("Authentication required. Please login again.");
+        setTimeout(() => setLocation("/login"), 2000);
+        return;
+      }
+
       const response = await fetch("/api/kyc/verify", {
         method: "POST",
         headers: {
@@ -62,7 +68,12 @@ export default function KYCVerification() {
         setMessage("Identity verification completed successfully! You can now fund your account and make withdrawals.");
         setTimeout(() => setLocation("/dashboard"), 2000);
       } else {
-        setMessage(result.message || "Verification failed");
+        if (response.status === 403 || response.status === 401) {
+          setMessage("Session expired. Please login again.");
+          setTimeout(() => setLocation("/login"), 2000);
+        } else {
+          setMessage(result.message || "Verification failed");
+        }
       }
     } catch (error) {
       setMessage("Network error occurred");
