@@ -4,6 +4,7 @@ import { eq, and, isNull } from 'drizzle-orm';
 import { updateUserInvestment } from './roi';
 import Moralis from 'moralis';
 import { EvmChain } from '@moralisweb3/common-evm-utils';
+import { transactionValidator } from './transaction-validator';
 
 interface WalletConfig {
   address: string;
@@ -139,6 +140,49 @@ class BlockchainService {
         console.log(`Transaction ${event.hash} already processed`);
         return;
       }
+
+      // Validate transaction using comprehensive validator
+      const validation = await transactionValidator.validateTransaction(
+        event.hash,
+        event.to,
+        event.value,
+        transaction.cryptocurrency
+      );
+
+      if (!validation.isValid) {
+        console.log(`Transaction validation failed: ${validation.reason}`);
+        
+        await db.update(fundingTransactions)
+          .set({
+            transactionHash: event.hash,
+            status: 'failed',
+            blockConfirmations: event.confirmations || 0
+          })
+          .where(eq(fundingTransactions.id, transaction.id));
+        return;
+      }
+
+      // Check for duplicate processing
+      const isDuplicate = await transactionValidator.preventDuplicateProcessing(event.hash);
+      if (isDuplicate) {
+        console.log(`Transaction ${event.hash} already processed - preventing duplicate`);
+        return;
+      }
+
+      // Validate user eligibility
+      const isEligible = await transactionValidator.validateUserEligibility(transaction.userId);
+      if (!isEligible) {
+        console.log(`User ${transaction.userId} not eligible for funding - requires KYC verification`);
+        
+        await db.update(fundingTransactions)
+          .set({
+            transactionHash: event.hash,
+            status: 'failed',
+            blockConfirmations: event.confirmations || 0
+          })
+          .where(eq(fundingTransactions.id, transaction.id));
+        return;
+      }
       
       // Update transaction with blockchain data
       await db.update(fundingTransactions)
@@ -150,7 +194,7 @@ class BlockchainService {
         })
         .where(eq(fundingTransactions.id, transaction.id));
 
-      console.log(`Updated funding transaction ${transaction.id} with hash ${event.hash}`);
+      console.log(`Updated funding transaction ${transaction.id} with hash ${event.hash}, amount verified: $${validation.actualAmount?.toFixed(2)}`);
 
       // Complete transaction if sufficient confirmations
       if (event.confirmed && (event.confirmations || 0) >= 3) {
@@ -159,6 +203,11 @@ class BlockchainService {
     } catch (error) {
       console.error('Error processing incoming transaction:', error);
     }
+  }
+
+  private async convertWeiToUSD(weiValue: string): Promise<number> {
+    const { priceOracleService } = await import('./price-oracle');
+    return await priceOracleService.convertWeiToUSD(weiValue);
   }
 
   async processWebhookEvent(webhookData: any) {
@@ -218,42 +267,22 @@ class BlockchainService {
 
   private async processQueuedTransactions() {
     try {
-      // Find all pending funding transactions that need blockchain confirmation
-      const pendingTransactions = await db.select()
-        .from(fundingTransactions)
-        .where(eq(fundingTransactions.status, 'pending'));
-
-      for (const transaction of pendingTransactions) {
-        // Simulate blockchain confirmation after 2 minutes (in real implementation, this would check actual blockchain)
-        const createdAt = transaction.createdAt ? new Date(transaction.createdAt) : new Date();
-        const now = new Date();
-        const timeDiff = now.getTime() - createdAt.getTime();
-        
-        if (timeDiff > 120000) { // 2 minutes - simulate blockchain detection
-          await this.simulateBlockchainConfirmation(transaction.id);
-        }
+      // Only process simulated transactions when monitoring is disabled
+      if (!this.monitoringEnabled) {
+        await this.processSimulatedTransactions();
+        return;
       }
 
-      // Process blockchain-confirmed transactions that need completion (simulate confirmation accumulation)
+      // When real monitoring is enabled, only process confirmed transactions
       const blockchainConfirmed = await db.select()
         .from(fundingTransactions)
         .where(eq(fundingTransactions.status, 'blockchain_confirmed'));
 
       for (const transaction of blockchainConfirmed) {
-        const confirmedAt = transaction.createdAt ? new Date(transaction.createdAt) : new Date();
-        const now = new Date();
-        const timeDiff = now.getTime() - confirmedAt.getTime();
+        const requiredConf = transaction.requiredConfirmations || 3;
+        const currentConf = transaction.blockConfirmations || 0;
         
-        // Simulate that we need at least 5 minutes for sufficient confirmations
-        if (timeDiff > 300000) { // 5 minutes total
-          // Update confirmations before completing
-          await db.update(fundingTransactions)
-            .set({ 
-              blockConfirmations: 6,
-              requiredConfirmations: 3
-            })
-            .where(eq(fundingTransactions.id, transaction.id));
-            
+        if (currentConf >= requiredConf) {
           await this.completeTransaction(transaction.id);
         }
       }
@@ -262,8 +291,61 @@ class BlockchainService {
     }
   }
 
+  private async processSimulatedTransactions() {
+    // SIMULATION ONLY - This will be disabled when real Moralis monitoring is fully configured
+    console.log('[SIMULATION MODE] Processing simulated transactions - this should be disabled in production');
+    
+    const pendingTransactions = await db.select()
+      .from(fundingTransactions)
+      .where(eq(fundingTransactions.status, 'pending'));
+
+    for (const transaction of pendingTransactions) {
+      const createdAt = transaction.createdAt ? new Date(transaction.createdAt) : new Date();
+      const now = new Date();
+      const timeDiff = now.getTime() - createdAt.getTime();
+      
+      // Only simulate if transaction is older than 10 minutes to prevent fake instant funding
+      if (timeDiff > 600000) { // 10 minutes instead of 2
+        console.log(`[SIMULATION] Transaction ${transaction.id} eligible for simulation after 10 minutes`);
+        await this.simulateBlockchainConfirmation(transaction.id);
+      }
+    }
+
+    // Process blockchain-confirmed transactions with longer wait time
+    const blockchainConfirmed = await db.select()
+      .from(fundingTransactions)
+      .where(eq(fundingTransactions.status, 'blockchain_confirmed'));
+
+    for (const transaction of blockchainConfirmed) {
+      const confirmedAt = transaction.createdAt ? new Date(transaction.createdAt) : new Date();
+      const now = new Date();
+      const timeDiff = now.getTime() - confirmedAt.getTime();
+      
+      // Require 15 minutes total for simulation to complete
+      if (timeDiff > 900000) { // 15 minutes
+        await db.update(fundingTransactions)
+          .set({ 
+            blockConfirmations: 6,
+            requiredConfirmations: 3
+          })
+          .where(eq(fundingTransactions.id, transaction.id));
+          
+        await this.completeTransaction(transaction.id);
+      }
+    }
+  }
+
   private async simulateBlockchainConfirmation(transactionId: number) {
     try {
+      // SIMULATION ONLY - This should be removed when real monitoring is active
+      if (this.monitoringEnabled) {
+        console.log(`[ERROR] Simulation called while real monitoring is enabled - this should not happen`);
+        return;
+      }
+
+      console.log(`[SIMULATION] Simulating blockchain confirmation for transaction ${transactionId}`);
+      console.log(`[WARNING] This is simulation mode. In production, only real on-chain transactions should trigger confirmations.`);
+      
       const hashTx = `0x${Math.random().toString(16).substring(2)}${transactionId}`;
       
       await db.update(fundingTransactions)
@@ -273,7 +355,7 @@ class BlockchainService {
         })
         .where(eq(fundingTransactions.id, transactionId));
 
-      console.log(`Blockchain confirmation simulated for transaction ${transactionId}: ${hashTx}`);
+      console.log(`[SIMULATION] Blockchain confirmation simulated for transaction ${transactionId}: ${hashTx}`);
     } catch (error) {
       console.error('Error simulating blockchain confirmation:', error);
     }

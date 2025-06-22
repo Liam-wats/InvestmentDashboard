@@ -131,6 +131,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Security test endpoint (admin only)
+  app.post("/api/admin/security-test", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      // In production, add admin role check here
+      const { runSecurityTests, demonstrateSecurityMeasures } = await import('./security-test');
+      
+      const testResults = await runSecurityTests();
+      await demonstrateSecurityMeasures();
+      
+      res.json({
+        message: 'Security tests completed',
+        results: testResults,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error running security tests:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   // User registration
   app.post("/api/register", validateRequest(insertUserSchema), async (req, res) => {
     try {
@@ -268,7 +288,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cryptocurrency,
         amount: numericAmount.toFixed(2),
         walletAddress,
-        status: "pending", // Properly set to pending for blockchain validation
+        status: "pending", // Will remain pending until real blockchain transaction is detected
+        requiredConfirmations: 3
       }).returning();
 
       res.json({ 

@@ -43,5 +43,7 @@ export function logMoralisConfiguration() {
   console.log('6. Enable "Native Transactions" and "Contract Interactions"');
   console.log('7. Set "Include Logs" to false for better performance');
   console.log('8. Add tag: "investwise-funding"');
+  console.log('9. Set minimum confirmations to 3 for security');
+  console.log('10. Enable "Include Contract Logs" for ERC-20 token tracking');
   console.log('================================\n');
 }

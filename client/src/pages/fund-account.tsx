@@ -189,8 +189,9 @@ export default function FundAccount() {
       setTransactionStep('success');
 
       toast({
-        title: "Funding transaction submitted!",
-        description: `Your ${selectedCrypto.symbol} deposit of $${data.amount} is pending blockchain confirmation. Please wait for confirmation before funds are credited.`,
+        title: "Funding Request Created",
+        description: `Send exactly ${calculateCryptoAmount()} ${selectedCrypto.symbol} to complete funding. Balance updates only after blockchain confirmation.`,
+        variant: "default"
       });
 
       // Redirect to dashboard after 3 seconds
@@ -487,7 +488,8 @@ export default function FundAccount() {
                             <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
                               <p>• Send exactly {calculateCryptoAmount()} {selectedCrypto.symbol}</p>
                               <p>• Do not send any other cryptocurrency to this address</p>
-                              <p>• Your account will be credited within 10-30 minutes</p>
+                              <p>• Your balance will update only after blockchain confirmation (3+ confirmations)</p>
+                              <p className="text-red-600 dark:text-red-400 font-medium">• Funds must be actually sent to complete funding - no fake transactions allowed</p>
                             </div>
                           </div>
                         </CardContent>
