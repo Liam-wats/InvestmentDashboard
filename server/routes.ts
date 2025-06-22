@@ -12,6 +12,7 @@ import { storage } from "./storage";
 import { hashPassword, verifyPassword, generateToken, authenticateToken, type AuthRequest } from "./auth";
 import { coinMarketCapService } from "./coinmarket";
 import { startROICronJob, updateUserInvestment } from "./roi";
+import { blockchainService } from "./blockchain";
 
 // Validation middleware
 function validateRequest(schema: any) {
@@ -28,6 +29,9 @@ function validateRequest(schema: any) {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Start ROI cron job
   startROICronJob();
+  
+  // Initialize blockchain monitoring
+  await blockchainService.initialize();
 
   // PostgreSQL session store
   const PostgreSqlStore = pgSession(session);
@@ -47,6 +51,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
       },
     })
   );
+
+  // Moralis webhook endpoint for real-time transaction monitoring
+  app.post("/api/webhook/moralis", express.raw({ type: 'application/json' }), async (req, res) => {
+    try {
+      const signature = req.headers['x-signature'];
+      const body = req.body;
+      
+      // In production, verify webhook signature here
+      // For now, we'll process the webhook data directly
+      
+      let webhookData;
+      if (Buffer.isBuffer(body)) {
+        webhookData = JSON.parse(body.toString());
+      } else {
+        webhookData = body;
+      }
+
+      console.log('Received Moralis webhook:', JSON.stringify(webhookData, null, 2));
+      
+      // Process the webhook data
+      await blockchainService.processWebhookEvent(webhookData);
+      
+      res.status(200).json({ message: 'Webhook processed successfully' });
+    } catch (error) {
+      console.error('Error processing Moralis webhook:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Test endpoint to validate webhook functionality
+  app.post("/api/test-webhook", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { testWebhookEndpoint } = await import('./webhook-test');
+      const result = await testWebhookEndpoint();
+      
+      res.json({ 
+        message: 'Webhook test completed', 
+        success: result,
+        webhookUrl: `${req.protocol}://${req.get('host')}/api/webhook/moralis`
+      });
+    } catch (error) {
+      console.error('Error testing webhook:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Get blockchain monitoring status
+  app.get("/api/blockchain/status", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const status = {
+        enabled: blockchainService.isMonitoringEnabled(),
+        webhookUrl: `${req.protocol}://${req.get('host')}/api/webhook/moralis`,
+        monitoredWallets: blockchainService.getMonitoredWallets()
+      };
+      
+      res.json(status);
+    } catch (error) {
+      console.error('Error getting blockchain status:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Get transaction history for a wallet
+  app.get("/api/blockchain/transactions/:address", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { address } = req.params;
+      const limit = parseInt(req.query.limit as string) || 10;
+      
+      if (!blockchainService.isMonitoringEnabled()) {
+        return res.status(503).json({ message: 'Blockchain monitoring not available' });
+      }
+      
+      const transactions = await blockchainService.getTransactionHistory(address, limit);
+      res.json({ transactions });
+    } catch (error) {
+      console.error('Error fetching transaction history:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
 
   // User registration
   app.post("/api/register", validateRequest(insertUserSchema), async (req, res) => {

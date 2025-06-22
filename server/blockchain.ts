@@ -2,32 +2,210 @@ import { db } from './db';
 import { users, fundingTransactions } from '@shared/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { updateUserInvestment } from './roi';
+import Moralis from 'moralis';
+import { EvmChain } from '@moralisweb3/common-evm-utils';
+
+interface WalletConfig {
+  address: string;
+  chain: 'ethereum' | 'bitcoin';
+  network?: string;
+}
+
+interface TransactionEvent {
+  hash: string;
+  from: string;
+  to: string;
+  value: string;
+  timestamp: string;
+  confirmed: boolean;
+  blockNumber?: number;
+  confirmations?: number;
+}
 
 class BlockchainService {
   private initialized = false;
   private monitoringEnabled = false;
+  private watchedWallets: WalletConfig[] = [
+    { address: '0xCd3B1Afe359d96eD77E3f44B7A55Dc12040858D0', chain: 'ethereum' },
+    { address: 'bc1q0uanf2f9px7q5r7maka05mwanutj8gvpqym62g', chain: 'bitcoin' }
+  ];
 
   async initialize() {
     if (this.initialized) return;
 
     try {
-      // Check if blockchain monitoring should be enabled
       const moralisApiKey = process.env.MORALIS_API_KEY;
       
       if (!moralisApiKey) {
         console.log('MORALIS_API_KEY not provided, using simulated blockchain monitoring');
         this.monitoringEnabled = false;
+        this.startTransactionMonitoring();
       } else {
-        console.log('Blockchain monitoring service initialized with real API');
+        console.log('Initializing Moralis Web3 API...');
+        await Moralis.start({
+          apiKey: moralisApiKey,
+        });
         this.monitoringEnabled = true;
+        console.log('Moralis Web3 API initialized successfully');
+        
+        // Log configuration for user setup
+        const { logMoralisConfiguration } = await import('./moralis-config');
+        logMoralisConfiguration();
+        
+        // Initialize real-time monitoring
+        await this.setupWalletMonitoring();
+        this.startTransactionMonitoring();
       }
 
       this.initialized = true;
-      
-      // Start monitoring process
-      this.startTransactionMonitoring();
     } catch (error) {
       console.error('Failed to initialize blockchain service:', error);
+      // Fallback to simulated monitoring
+      this.monitoringEnabled = false;
+      this.startTransactionMonitoring();
+    }
+  }
+
+  private async setupWalletMonitoring() {
+    if (!this.monitoringEnabled) return;
+
+    try {
+      // Fetch historical transactions for each watched wallet
+      for (const wallet of this.watchedWallets) {
+        if (wallet.chain === 'ethereum') {
+          await this.fetchEthereumTransactions(wallet.address);
+        }
+        // Bitcoin monitoring would require additional setup
+      }
+    } catch (error) {
+      console.error('Error setting up wallet monitoring:', error);
+    }
+  }
+
+  private async fetchEthereumTransactions(address: string) {
+    try {
+      const response = await Moralis.EvmApi.transaction.getWalletTransactions({
+        address,
+        chain: EvmChain.ETHEREUM,
+        limit: 10,
+      });
+
+      const transactions = response.result;
+      console.log(`Fetched ${transactions.length} transactions for address ${address}`);
+      
+      for (const tx of transactions) {
+        // Process transaction if it's to one of our watched addresses
+        if (tx.toAddress?.toLowerCase() === address.toLowerCase()) {
+          await this.processIncomingTransaction({
+            hash: tx.hash,
+            from: tx.fromAddress?.toLowerCase() || '',
+            to: tx.toAddress?.toLowerCase() || '',
+            value: tx.value.toString(),
+            timestamp: tx.blockTimestamp?.toISOString() || new Date().toISOString(),
+            confirmed: true,
+            blockNumber: tx.blockNumber,
+            confirmations: 12 // Assume sufficient confirmations for historical transactions
+          });
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching Ethereum transactions for ${address}:`, error);
+    }
+  }
+
+  private async processIncomingTransaction(event: TransactionEvent) {
+    try {
+      // Find matching funding transaction that's still pending
+      const fundingTx = await db.select()
+        .from(fundingTransactions)
+        .where(
+          and(
+            eq(fundingTransactions.walletAddress, event.to),
+            eq(fundingTransactions.status, 'pending')
+          )
+        )
+        .orderBy(fundingTransactions.createdAt)
+        .limit(1);
+
+      if (fundingTx.length === 0) {
+        console.log(`No pending funding transaction found for address ${event.to}`);
+        return;
+      }
+
+      const transaction = fundingTx[0];
+      
+      // Prevent duplicate processing
+      if (transaction.transactionHash && transaction.transactionHash === event.hash) {
+        console.log(`Transaction ${event.hash} already processed`);
+        return;
+      }
+      
+      // Update transaction with blockchain data
+      await db.update(fundingTransactions)
+        .set({
+          transactionHash: event.hash,
+          status: event.confirmed ? 'blockchain_confirmed' : 'pending',
+          blockConfirmations: event.confirmations || 0,
+          requiredConfirmations: 3
+        })
+        .where(eq(fundingTransactions.id, transaction.id));
+
+      console.log(`Updated funding transaction ${transaction.id} with hash ${event.hash}`);
+
+      // Complete transaction if sufficient confirmations
+      if (event.confirmed && (event.confirmations || 0) >= 3) {
+        await this.completeTransaction(transaction.id);
+      }
+    } catch (error) {
+      console.error('Error processing incoming transaction:', error);
+    }
+  }
+
+  async processWebhookEvent(webhookData: any) {
+    try {
+      console.log('Processing webhook event:', JSON.stringify(webhookData, null, 2));
+      
+      // Handle different webhook formats from Moralis
+      let transactions = [];
+      
+      if (webhookData.txs && Array.isArray(webhookData.txs)) {
+        // Moralis Streams format
+        transactions = webhookData.txs;
+      } else if (webhookData.txHash) {
+        // Single transaction format
+        transactions = [webhookData];
+      } else {
+        console.log('Unknown webhook format, skipping...');
+        return;
+      }
+
+      for (const tx of transactions) {
+        if (tx.confirmed === false) {
+          console.log(`Transaction ${tx.hash || tx.txHash} not yet confirmed, skipping...`);
+          continue;
+        }
+
+        const event: TransactionEvent = {
+          hash: tx.hash || tx.txHash,
+          from: (tx.from || tx.fromAddress || '').toLowerCase(),
+          to: (tx.to || tx.toAddress || '').toLowerCase(),
+          value: tx.value || '0',
+          timestamp: tx.blockTimestamp || new Date().toISOString(),
+          confirmed: tx.confirmed !== false,
+          blockNumber: tx.blockNumber,
+          confirmations: tx.confirmations || 6
+        };
+
+        // Only process transactions to our monitored addresses
+        if (this.watchedWallets.some(wallet => 
+          wallet.address.toLowerCase() === event.to
+        )) {
+          await this.processIncomingTransaction(event);
+        }
+      }
+    } catch (error) {
+      console.error('Error processing webhook event:', error);
+      throw error; // Re-throw to return 500 status
     }
   }
 
@@ -182,6 +360,45 @@ class BlockchainService {
   isMonitoringEnabled(): boolean {
     return this.monitoringEnabled;
   }
+
+  getMonitoredWallets(): WalletConfig[] {
+    return this.watchedWallets;
+  }
+
+  async getTransactionHistory(address: string, limit: number = 10) {
+    if (!this.monitoringEnabled) {
+      throw new Error('Blockchain monitoring not enabled');
+    }
+
+    try {
+      const response = await Moralis.EvmApi.transaction.getWalletTransactions({
+        address,
+        chain: EvmChain.ETHEREUM,
+        limit,
+      });
+
+      return response.result.map(tx => ({
+        hash: tx.hash,
+        from: tx.fromAddress,
+        to: tx.toAddress,
+        value: tx.value.toString(),
+        timestamp: tx.blockTimestamp?.toISOString(),
+        blockNumber: tx.blockNumber,
+        confirmed: true
+      }));
+    } catch (error) {
+      console.error(`Error fetching transaction history for ${address}:`, error);
+      throw error;
+    }
+  }
 }
 
 export const blockchainService = new BlockchainService();
+
+// Utility function to get webhook URL for Moralis dashboard configuration
+export function getWebhookURL(): string {
+  const baseUrl = process.env.REPLIT_DOMAINS ? 
+    `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 
+    'http://localhost:5000';
+  return `${baseUrl}/api/webhook/moralis`;
+}
