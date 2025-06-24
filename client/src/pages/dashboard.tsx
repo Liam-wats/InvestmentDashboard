@@ -98,29 +98,31 @@ export default function Dashboard() {
         <div className="pt-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Welcome Section */}
-            <div className="mb-8 flex justify-between items-start">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  Welcome back, {user?.name}!
-                </h1>
-                <p className="text-gray-600 dark:text-gray-300 mt-2">
-                  Here's an overview of your investment portfolio with dynamic ROI system
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <Button 
-                  onClick={() => navigate('/fund-account')}
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 font-semibold"
-                >
-                  Fund Account
-                </Button>
-                <Button 
-                  onClick={() => navigate('/withdraw')}
-                  variant="outline"
-                  className="px-6 py-2 font-semibold"
-                >
-                  Withdraw
-                </Button>
+            <div className="mb-8">
+              <div className="flex flex-col space-y-4 sm:flex-row sm:justify-between sm:items-start sm:space-y-0">
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white break-words">
+                    Welcome back, {user?.name}!
+                  </h1>
+                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-2 break-words leading-relaxed">
+                    Here's an overview of your investment portfolio with dynamic ROI system
+                  </p>
+                </div>
+                <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-3 sm:ml-4 flex-shrink-0">
+                  <Button 
+                    onClick={() => navigate('/fund-account')}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 sm:px-6 sm:py-2 font-semibold text-sm sm:text-base w-full sm:w-auto min-h-[44px] touch-manipulation"
+                  >
+                    Fund Account
+                  </Button>
+                  <Button 
+                    onClick={() => navigate('/withdraw')}
+                    variant="outline"
+                    className="px-4 py-2 sm:px-6 sm:py-2 font-semibold text-sm sm:text-base w-full sm:w-auto min-h-[44px] touch-manipulation"
+                  >
+                    Withdraw
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -210,11 +212,11 @@ export default function Dashboard() {
                     <p className="text-lg font-bold text-emerald-600">5% Daily</p>
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                    <h4 className="font-medium text-sm mb-2">$600 - $9,000</h4>
+                    <h4 className="font-medium text-sm mb-2">$600 - $4,500</h4>
                     <p className="text-lg font-bold text-emerald-600">10% Daily</p>
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                    <h4 className="font-medium text-sm mb-2">$10,000+</h4>
+                    <h4 className="font-medium text-sm mb-2">$4,600+</h4>
                     <p className="text-lg font-bold text-emerald-600">25% Daily</p>
                   </div>
                 </div>
@@ -292,14 +294,17 @@ export default function Dashboard() {
                         <span className="text-sm font-medium">Daily Growth Rate</span>
                         <span className="text-sm font-medium">{portfolioService.formatPercentage(dailyRoi)}</span>
                       </div>
-                      <Progress value={(dailyRoi / 15) * 100} className="h-2" />
-                      <p className="text-xs text-muted-foreground mt-1">Maximum: 15% daily</p>
+                      <Progress value={(dailyRoi / 25) * 100} className="h-2" />
+                      <p className="text-xs text-muted-foreground mt-1">Maximum: 25% daily</p>
                     </div>
 
                     <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
                       <h4 className="font-medium text-sm mb-2">Next ROI Tier</h4>
                       <p className="text-xs text-muted-foreground">
-                        Invest {portfolioService.formatCurrency(Math.max(0, Math.ceil(totalInvested / 1000) * 1000 - totalInvested))} more to unlock the next ROI rate!
+                        {totalInvested < 100 ? `Invest ${portfolioService.formatCurrency(100 - totalInvested)} more to reach 5% daily ROI!` :
+                         totalInvested < 600 ? `Invest ${portfolioService.formatCurrency(600 - totalInvested)} more to reach 10% daily ROI!` :
+                         totalInvested < 4600 ? `Invest ${portfolioService.formatCurrency(4600 - totalInvested)} more to reach 25% daily ROI!` :
+                         'You have reached the maximum ROI tier!'}
                       </p>
                     </div>
                   </div>
@@ -314,7 +319,12 @@ export default function Dashboard() {
                   <CardTitle>Recent Funding Transactions</CardTitle>
                   <CardDescription>Your latest account funding activities</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => navigate('/fund-account')}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => navigate('/fund-account')}
+                  className="min-h-[40px] touch-manipulation text-sm px-3 py-2"
+                >
                   Add Funds
                 </Button>
               </CardHeader>
@@ -357,7 +367,10 @@ export default function Dashboard() {
                       <p className="text-gray-500 dark:text-gray-400 mb-4">
                         Start by funding your account to begin earning daily ROI
                       </p>
-                      <Button onClick={() => navigate('/fund-account')} className="bg-emerald-600 hover:bg-emerald-700">
+                      <Button 
+                        onClick={() => navigate('/fund-account')} 
+                        className="bg-emerald-600 hover:bg-emerald-700 min-h-[44px] touch-manipulation px-6 py-3 text-base font-medium"
+                      >
                         Fund Account
                       </Button>
                     </div>

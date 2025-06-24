@@ -11,19 +11,31 @@ export interface ROITier {
 
 export const ROI_TIERS: ROITier[] = [
   { minAmount: 100, maxAmount: 500, dailyRate: 5.0 },
-  { minAmount: 600, maxAmount: 9000, dailyRate: 10.0 },
-  { minAmount: 10000, maxAmount: Infinity, dailyRate: 25.0 },
+  { minAmount: 600, maxAmount: 4500, dailyRate: 10.0 },
+  { minAmount: 4600, maxAmount: Infinity, dailyRate: 25.0 },
 ];
 
 export function calculateDailyROI(totalInvested: number): number {
-  if (totalInvested < 100) return 0;
+  // Validate input
+  if (typeof totalInvested !== 'number' || isNaN(totalInvested) || totalInvested < 0) {
+    return 0;
+  }
 
+  // Round to 2 decimal places to avoid floating point issues
+  const amount = Math.round(totalInvested * 100) / 100;
+  
+  // Below minimum investment threshold
+  if (amount < 100) return 0;
+
+  // Check each tier with strict validation
   for (const tier of ROI_TIERS) {
-    if (totalInvested >= tier.minAmount && totalInvested <= tier.maxAmount) {
+    if (amount >= tier.minAmount && amount <= tier.maxAmount) {
       return tier.dailyRate;
     }
   }
 
+  // This should never happen with proper tier configuration
+  console.error(`No ROI tier found for amount: $${amount}`);
   return 0;
 }
 
